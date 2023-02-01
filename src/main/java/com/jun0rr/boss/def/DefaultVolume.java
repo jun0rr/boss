@@ -29,7 +29,7 @@ public class DefaultVolume implements Volume {
   
   private final List<ByteBuffer> buffers;
   
-  private final Queue<ByteBuffer> released;
+  private final Queue<Block> released;
   
   private int woffset;
   
@@ -76,8 +76,16 @@ public class DefaultVolume implements Volume {
       count++;
     }
     while(count < blocks) {
+      int idx = woffset / blockSize;
+      ByteBuffer blk;
       if(woffset + blockSize > capacity()) {
-        buffers.add(malloc.alloc());
+        ByteBuffer buf = malloc.alloc();
+        blk = buf.limit(blockSize).slice();
+        buf.limit(buf.capacity());
+        buffers.add(buf);
+      }
+      else {
+        
       }
       
     }
