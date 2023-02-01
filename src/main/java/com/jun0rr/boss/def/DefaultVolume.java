@@ -6,13 +6,14 @@ package com.jun0rr.boss.def;
 
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
-import com.jun0rr.jbom.buffer.BinBuffer;
+import com.jun0rr.jbom.buffer.BufferAllocator;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  *
@@ -20,22 +21,31 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class DefaultVolume implements Volume {
   
-  private final BinBuffer buffer;
-  
   private final String id;
-  
-  private final Queue<ByteBuffer> released;
   
   private final int blockSize;
   
+  private final BufferAllocator malloc;
+  
+  private final List<ByteBuffer> buffers;
+  
+  private final Queue<ByteBuffer> released;
+  
   private int woffset;
   
-  public DefaultVolume(String id, BinBuffer buf, int blockSize) {
+  public DefaultVolume(String id, int blockSize, BufferAllocator ba) {
     this.id = Objects.requireNonNull(id);
-    this.buffer = Objects.requireNonNull(buf);
-    this.released = new ConcurrentLinkedQueue<>();
-    this.woffset = 0;
+    this.malloc = Objects.requireNonNull(ba);
+    if(blockSize >= malloc.bufferSize()) {
+      throw new IllegalArgumentException(String.format(
+          "Bad block size (%d). Must be lesser then BufferAllocator.bufferSize(%d)", 
+          blockSize, malloc.bufferSize())
+      );
+    }
     this.blockSize = blockSize;
+    this.released = new ConcurrentLinkedQueue<>();
+    this.buffers = new CopyOnWriteArrayList<>();
+    this.woffset = 0;
   }
 
   @Override
@@ -46,6 +56,14 @@ public class DefaultVolume implements Volume {
   @Override
   public int blockSize() {
     return blockSize;
+  }
+  
+  private int index() {
+    return woffset / malloc.bufferSize();
+  }
+  
+  public int capacity() {
+    return buffers.stream().mapToInt(ByteBuffer::capacity).sum();
   }
 
   @Override
@@ -58,6 +76,9 @@ public class DefaultVolume implements Volume {
       count++;
     }
     while(count < blocks) {
+      if(woffset + blockSize > capacity()) {
+        buffers.add(malloc.alloc());
+      }
       
     }
   }
