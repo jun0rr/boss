@@ -19,7 +19,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * @author F6036477
  */
-public class DefaultVolume implements Volume {
+public class DefaultVolume implements Volume, BufferAllocator {
   
   private final String id;
   
@@ -29,25 +29,22 @@ public class DefaultVolume implements Volume {
   
   private final List<ByteBuffer> buffers;
   
-  private final Queue<Block> released;
+  private final Queue<FreeBuffer> freebufs;
+  
+  private final int bufferSize;
   
   private int woffset;
   
   public DefaultVolume(String id, int blockSize, BufferAllocator ba) {
     this.id = Objects.requireNonNull(id);
     this.malloc = Objects.requireNonNull(ba);
-    if(blockSize >= malloc.bufferSize()) {
-      throw new IllegalArgumentException(String.format(
-          "Bad block size (%d). Must be lesser then BufferAllocator.bufferSize(%d)", 
-          blockSize, malloc.bufferSize())
-      );
-    }
     this.blockSize = blockSize;
-    this.released = new ConcurrentLinkedQueue<>();
+    this.bufferSize = blockSize * 10;
+    this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = new CopyOnWriteArrayList<>();
     this.woffset = 0;
   }
-
+  
   @Override
   public String id() {
     return id;
@@ -59,7 +56,7 @@ public class DefaultVolume implements Volume {
   }
   
   private int index() {
-    return woffset / malloc.bufferSize();
+    return woffset / bufferSize;
   }
   
   public int capacity() {
@@ -70,24 +67,8 @@ public class DefaultVolume implements Volume {
   public Block allocate(int size) {
     int blocks = size / blockSize + (size % blockSize > 0 ? 1 : 0);
     List<ByteBuffer> bufs = new ArrayList<>(blocks);
-    int count = 0;
-    while(count < blocks && !released.isEmpty()) {
-      bufs.add(released.poll());
-      count++;
-    }
-    while(count < blocks) {
-      int idx = woffset / blockSize;
-      ByteBuffer blk;
-      if(woffset + blockSize > capacity()) {
-        ByteBuffer buf = malloc.alloc();
-        blk = buf.limit(blockSize).slice();
-        buf.limit(buf.capacity());
-        buffers.add(buf);
-      }
-      else {
-        
-      }
-      
+    while(blocks > 0 && !freebufs.isEmpty()) {
+      bufs.add(freebufs.poll())
     }
   }
 
@@ -109,6 +90,21 @@ public class DefaultVolume implements Volume {
   @Override
   public void close() {
     malloc.close();
+  }
+
+  @Override
+  public int bufferSize() {
+    return blockSize;
+  }
+
+  @Override
+  public ByteBuffer alloc() {
+    if()
+  }
+
+  @Override
+  public ByteBuffer alloc(int size) {
+    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
   }
 
 }

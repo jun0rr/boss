@@ -18,12 +18,14 @@ public interface Block {
   
   public BinBuffer buffer();
   
+  public Volume volume();
+  
   public boolean hasNext();
   
   public Block next();
   
-  public Volume volume();
-  
   public Block setNext(Block blk);
+  
+  public Block lastBlock();
   
 }
