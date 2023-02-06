@@ -16,11 +16,11 @@ public interface Volume extends Closeable {
   
   public int blockSize();
   
+  public Block allocate();
+  
   public Block allocate(int size);
   
   public Volume release(Block blk);
-  
-  public Volume releaseAll(Block blk);
   
   public Block get(int offset);
   
