@@ -24,7 +24,9 @@ public interface Block {
   
   public Block next();
   
-  public Block setNext(Block blk);
+  public int nextOffset();
+  
+  public Block setNextOffset(int offset);
   
   public Block lastBlock();
   

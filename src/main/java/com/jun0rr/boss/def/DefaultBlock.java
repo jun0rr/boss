@@ -7,7 +7,6 @@ package com.jun0rr.boss.def;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.jbom.buffer.BinBuffer;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
@@ -20,11 +19,11 @@ public class DefaultBlock implements Block {
   
   private final BinBuffer buffer;
   
-  private final ByteBuffer nextbuf;
+  private final BinBuffer nextbuf;
   
   private final int offset;
   
-  public DefaultBlock(Volume vol, BinBuffer buf, ByteBuffer next, int offset) {
+  public DefaultBlock(Volume vol, BinBuffer buf, BinBuffer next, int offset) {
     this.volume = Objects.requireNonNull(vol);
     this.buffer = Objects.requireNonNull(buf);
     this.nextbuf = Objects.requireNonNull(next);
@@ -38,24 +37,29 @@ public class DefaultBlock implements Block {
 
   @Override
   public int size() {
-    return nextbuf.getInt(0);
+    return buffer.capacity();
   }
 
   @Override
   public BinBuffer buffer() {
     return buffer;
   }
+  
+  @Override
+  public int nextOffset() {
+    return nextbuf.position(0).getInt();
+  }
 
   @Override
   public boolean hasNext() {
-    return nextbuf.getInt(Integer.BYTES) >= 0;
+    return nextOffset() >= 0;
   }
 
   @Override
   public Block next() {
-    int noffset = nextbuf.getInt(Integer.BYTES);
-    if(noffset < 0) return null;
-    return volume.get(noffset);
+    int nof = nextOffset();
+    if(nof < 0) return null;
+    return volume.get(nof);
   }
 
   @Override
@@ -64,9 +68,53 @@ public class DefaultBlock implements Block {
   }
 
   @Override
-  public Block setNext(Block blk) {
-    nextbuf.putInt(Integer.BYTES, Objects.requireNonNull(blk).offset());
+  public Block setNextOffset(int offset) {
+    nextbuf.position(0).putInt(offset);
     return this;
+  }
+
+  @Override
+  public Block lastBlock() {
+    Block last = this;
+    while(hasNext()) {
+      last = next();
+    }
+    return last;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 3;
+    hash = 67 * hash + Objects.hashCode(this.volume);
+    hash = 67 * hash + this.offset();
+    hash = 67 * hash + this.nextOffset();
+    return hash;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final DefaultBlock other = (DefaultBlock) obj;
+    if (this.offset() != other.offset()) {
+      return false;
+    }
+    if (this.nextOffset() != other.nextOffset()) {
+      return false;
+    }
+    return Objects.equals(this.volume, other.volume);
+  }
+
+  @Override
+  public String toString() {
+    return "DefaultBlock{" + "volume=" + volume + ", buffer=" + buffer + ", offset=" + offset() + ", nextOffset=" + nextOffset() + '}';
   }
   
 }
