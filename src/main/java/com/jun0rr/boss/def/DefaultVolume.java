@@ -64,6 +64,14 @@ public class DefaultVolume implements Volume {
     return buffers.stream().mapToInt(ByteBuffer::capacity).sum();
   }
   
+  private FreeBuffer getFreeBuffer(int offset) {
+    if(offset < 0) return null;
+    int idx = offset / malloc.bufferSize();
+    int pos = offset - idx * malloc.bufferSize();
+    ByteBuffer bb = buffers.get(idx).clear().position(pos).limit(pos + blockSize);
+    return new FreeBuffer(offset, bb.slice());
+  }
+  
   private FreeBuffer allocateFreeBuffer() {
     FreeBuffer buf = null;
     if(!freebufs.isEmpty()) {
@@ -73,9 +81,7 @@ public class DefaultVolume implements Volume {
       if((woffset.get() + blockSize) > capacity()) {
         buffers.add(malloc.alloc());
       }
-      int pos = woffset.get() - index() * malloc.bufferSize();
-      ByteBuffer bb = buffers.get(index()).position(pos).limit(pos + blockSize);
-      buf = new FreeBuffer(woffset.getAndAdd(blockSize), bb.slice());
+      buf = getFreeBuffer(woffset.getAndAdd(blockSize));
     }
     buf.buffer().clear().putInt(-1).clear();
     return buf;
@@ -85,10 +91,7 @@ public class DefaultVolume implements Volume {
     FreeBuffer last = buf;
     int nos = last.buffer().position(0).getInt();
     while(nos >= 0) {
-      int idx = nos / malloc.bufferSize();
-      int pos = nos - idx * malloc.bufferSize();
-      ByteBuffer bb = buffers.get(idx).position(pos).limit(pos + blockSize);
-      last = new FreeBuffer(nos, bb.slice());
+      last = getFreeBuffer(nos);
       nos = last.buffer().position(0).getInt();
     }
     return last;
@@ -100,7 +103,7 @@ public class DefaultVolume implements Volume {
     last.buffer().position(0).putInt(fb.offset());
     return fb.buffer().position(Integer.BYTES).slice();
   }
-
+  
   @Override
   public Block allocate() {
     return allocate(blockSize);
@@ -108,7 +111,6 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Block allocate(int size) {
-    int blocks = size / blockSize + (size % blockSize > 0 ? 1 : 0);
     FreeBuffer buf = allocateFreeBuffer();
     BufferAllocator alloc = new DefaultBufferAllocator(blockSize - Integer.BYTES) {
       @Override
@@ -125,12 +127,33 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Volume release(Block blk) {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    Objects.requireNonNull(blk);
+    int nos = blk.offset();
+    do {
+      FreeBuffer buf = getFreeBuffer(nos);
+      freebufs.add(buf);
+      nos = buf.buffer().position(0).getInt();
+    } while(nos >= 0);
+    return this;
   }
 
   @Override
   public Block get(int offset) {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    FreeBuffer buf = getFreeBuffer(offset);
+    BufferAllocator alloc = new DefaultBufferAllocator(blockSize - Integer.BYTES) {
+      @Override
+      public ByteBuffer alloc(int size) {
+        return allocateSlice(buf);
+      }
+    };
+    List<ByteBuffer> bufs = new ArrayList<>();
+    FreeBuffer last = buf;
+    while(last != null) {
+      bufs.add(buf.buffer().position(Integer.BYTES).slice());
+      last = getFreeBuffer(last.buffer().position(0).getInt());
+    }
+    BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
+    return new DefaultBlock(this, buffer, BinBuffer.fixedSizeBuffer(buf.buffer().position(0).limit(Integer.BYTES).slice()), buf.offset());
   }
 
   @Override
