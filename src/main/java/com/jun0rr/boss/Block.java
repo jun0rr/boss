@@ -12,22 +12,10 @@ import com.jun0rr.jbom.buffer.BinBuffer;
  */
 public interface Block {
   
-  public int offset();
-  
-  public int size();
+  public Volume volume();
   
   public BinBuffer buffer();
   
-  public Volume volume();
-  
-  public boolean hasNext();
-  
-  public Block next();
-  
-  public int nextOffset();
-  
-  public Block setNextOffset(int offset);
-  
-  public Block lastBlock();
+  public int offset();
   
 }

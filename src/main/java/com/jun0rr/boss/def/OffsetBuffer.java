@@ -4,6 +4,7 @@
  */
 package com.jun0rr.boss.def;
 
+import com.jun0rr.boss.Volume;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -11,31 +12,31 @@ import java.util.Objects;
  *
  * @author F6036477
  */
-public class FreeBuffer {
-  
-  private final int offset;
+public class OffsetBuffer {
   
   private final ByteBuffer buffer;
   
+  private final int offset;
   
-  public FreeBuffer(int offset, ByteBuffer buf) {
-    this.offset = offset;
+  
+  public OffsetBuffer(int offset, ByteBuffer buf) {
     this.buffer = Objects.requireNonNull(buf);
-  }
-  
-  public int offset() {
-    return offset;
+    this.offset = offset;
   }
   
   public ByteBuffer buffer() {
     return buffer;
   }
+  
+  public int offset() {
+    return offset;
+  }
 
   @Override
   public int hashCode() {
     int hash = 7;
-    hash = 61 * hash + this.offset;
-    hash = 61 * hash + Objects.hashCode(this.buffer);
+    hash = 79 * hash + Objects.hashCode(this.buffer);
+    hash = 79 * hash + this.offset;
     return hash;
   }
 
@@ -50,7 +51,7 @@ public class FreeBuffer {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final FreeBuffer other = (FreeBuffer) obj;
+    final OffsetBuffer other = (OffsetBuffer) obj;
     if (this.offset != other.offset) {
       return false;
     }
@@ -59,7 +60,7 @@ public class FreeBuffer {
 
   @Override
   public String toString() {
-    return "FreeBuffer{" + "offset=" + offset + ", buffer=" + buffer + '}';
+    return "OffsetBuffer{" + "offset=" + offset + ", buffer=" + buffer + '}';
   }
   
 }

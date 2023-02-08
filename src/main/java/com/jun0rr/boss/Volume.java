@@ -5,6 +5,7 @@
 package com.jun0rr.boss;
 
 import java.io.Closeable;
+import java.util.Map;
 
 /**
  *
@@ -22,8 +23,12 @@ public interface Volume extends Closeable {
   
   public Volume release(Block blk);
   
+  public Volume release(int offset);
+  
   public Block get(int offset);
   
   @Override public void close();
+  
+  public Map<MetaKey,Object> metadata();
   
 }

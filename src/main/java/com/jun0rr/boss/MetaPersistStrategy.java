@@ -4,16 +4,14 @@
  */
 package com.jun0rr.boss;
 
-import java.nio.ByteBuffer;
-
 /**
  *
  * @author F6036477
  */
-public interface BufferAllocEvent {
+public interface MetaPersistStrategy {
   
-  public int offset();
+  public void save(Volume v);
   
-  public ByteBuffer addressBuffer();
+  public void load(Volume v);
   
 }

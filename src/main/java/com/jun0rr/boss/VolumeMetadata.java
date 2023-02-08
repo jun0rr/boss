@@ -4,20 +4,20 @@
  */
 package com.jun0rr.boss;
 
-import com.jun0rr.jbom.BinType;
+import com.jun0rr.jbom.mapping.Binary;
 
 /**
  *
  * @author F6036477
  */
-public interface Address {
+public interface VolumeMetadata {
   
-  public BinType type();
+  @Binary public String id();
   
-  public int offset();
+  @Binary public int blockSize();
   
-  public int size();
+  @Binary public int writeOffset();
   
-  public String volumeID();
+  @Binary public int[] freeOffsets();
   
 }
