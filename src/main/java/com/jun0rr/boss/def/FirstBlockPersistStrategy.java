@@ -35,7 +35,7 @@ public class FirstBlockPersistStrategy implements MetaPersistStrategy {
   public void load(Volume v) {
     Block b = v.get(0);
     Map<MetaKey,Object> meta = ctx.read(b.buffer());
-    meta.forEach((k,o)->v.metadata().put(k,o));
+    v.metadata().putAll(meta);
     v.release(b);
   }
   

@@ -53,7 +53,7 @@ public class DefaultVolume implements Volume {
     this.blockSize = blockSize;
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = Objects.requireNonNull(bufs);
-    this.woffset = new AtomicInteger(0);
+    this.woffset = new AtomicInteger(woffset);
     this.metadata = new ConcurrentHashMap<>();
     this.strategy = Objects.requireNonNull(mps);
     IntStream.of(freeofs)
@@ -67,7 +67,7 @@ public class DefaultVolume implements Volume {
     this.blockSize = blockSize;
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = new CopyOnWriteArrayList<>();
-    this.woffset = new AtomicInteger(0);
+    this.woffset = new AtomicInteger(blockSize);
     this.metadata = new ConcurrentHashMap<>();
     this.strategy = Objects.requireNonNull(mps);
   }
@@ -80,10 +80,6 @@ public class DefaultVolume implements Volume {
   @Override
   public int blockSize() {
     return blockSize;
-  }
-  
-  private int index() {
-    return woffset.get() / malloc.bufferSize();
   }
   
   public int capacity() {
