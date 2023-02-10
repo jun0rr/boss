@@ -14,6 +14,8 @@ import com.jun0rr.boss.Stored;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.jbom.BinContext;
 import com.jun0rr.jbom.ContextEvent;
+import com.jun0rr.jbom.ContextListener;
+import com.jun0rr.jbom.codec.ObjectCodec;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -28,7 +30,7 @@ import java.util.stream.Stream;
  *
  * @author F6036477
  */
-public class DefaultObjectStore implements ObjectStore {
+public class DefaultObjectStore implements ObjectStore, ContextListener {
   
   private final Volume volume;
   
@@ -146,6 +148,23 @@ public class DefaultObjectStore implements ObjectStore {
   @Override
   public IndexStore index() {
     return index;
+  }
+
+  @Override
+  public void write(ContextEvent e) {
+    if(e.codec().getClass() == ObjectCodec.class) {
+      List<Integer> is = index.classIndex().get(e.codec().bintype());
+      if(is == null) {
+        is = new CopyOnWriteArrayList<>();
+        index.classIndex().put(e.codec().bintype(), is);
+      }
+      is.add(e.)
+    }
+  }
+
+  @Override
+  public void read(ContextEvent e) {
+    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
   }
   
 }

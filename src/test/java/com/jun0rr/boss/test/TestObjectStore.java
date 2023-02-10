@@ -16,6 +16,7 @@ import com.jun0rr.jbom.mapping.Binary;
 import com.jun0rr.jbom.mapping.DefaultConstructStrategy;
 import com.jun0rr.jbom.mapping.ObjectMapper;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -38,13 +39,19 @@ public class TestObjectStore {
     ObjectStore os = new DefaultObjectStore(vol, ctx);
     List<Person> ps = new LinkedList<>();
     for(int i = 0; i < 10; i++) {
-      ps.add(new Person("Hello" + i, "World" + i, LocalDate.of(1980, i+1, i+10), (long)(Math.random() * Long.MAX_VALUE)));
+      ps.add(new Person("Hello" + i, "World" + i, LocalDate.of(1980, i+1, i+10), new Address("Street" + i, "SomeCity", 10+i), new long[]{(long)(Math.random() * Long.MAX_VALUE)}));
     }
     System.out.println(ps);
     ps.forEach(os::store);
-    System.out.println("--- classIndex:");
+    System.out.println("--- classIndex: Person");
     os.index().classIndex().entrySet().stream()
         .filter(e->e.getKey().isTypeOf(Person.class))
+        .map(Entry::getValue)
+        .flatMap(List::stream)
+        .forEach(System.out::println);
+    System.out.println("--- classIndex: Address");
+    os.index().classIndex().entrySet().stream()
+        .filter(e->e.getKey().isTypeOf(Address.class))
         .map(Entry::getValue)
         .flatMap(List::stream)
         .forEach(System.out::println);
@@ -76,14 +83,17 @@ public class TestObjectStore {
     
     private final LocalDate birth;
     
-    private long id;
-
-    //@MapConstructor({"name", "last", "birth", "id"})
-    public Person(String name, String last, LocalDate birth, long id) {
-      this.name = name;
-      this.last = last;
-      this.birth = birth;
-      this.id = id;
+    private final Address address;
+    
+    private final long[] ids;
+    
+    //@MapConstructor({"name", "last", "birth", "address", "ids"})
+    public Person(String name, String last, LocalDate birth, Address address, long[] ids) {
+      this.name = Objects.requireNonNull(name);
+      this.last = Objects.requireNonNull(last);
+      this.birth = Objects.requireNonNull(birth);
+      this.address = Objects.requireNonNull(address);
+      this.ids = ids;
     }
 
     @Binary
@@ -102,17 +112,23 @@ public class TestObjectStore {
     }
 
     @Binary
-    public long id() {
-      return id;
+    public long[] ids() {
+      return ids;
+    }
+
+    @Binary
+    public Address address() {
+      return address;
     }
 
     @Override
     public int hashCode() {
       int hash = 7;
-      hash = 97 * hash + Objects.hashCode(this.name);
-      hash = 97 * hash + Objects.hashCode(this.last);
-      hash = 97 * hash + Objects.hashCode(this.birth);
-      hash = 97 * hash + (int) (this.id ^ (this.id >>> 32));
+      hash = 89 * hash + Objects.hashCode(this.name);
+      hash = 89 * hash + Objects.hashCode(this.last);
+      hash = 89 * hash + Objects.hashCode(this.birth);
+      hash = 89 * hash + Objects.hashCode(this.address);
+      hash = 89 * hash + Arrays.hashCode(this.ids);
       return hash;
     }
 
@@ -128,21 +144,92 @@ public class TestObjectStore {
         return false;
       }
       final Person other = (Person) obj;
-      if (this.id != other.id) {
-        return false;
-      }
       if (!Objects.equals(this.name, other.name)) {
         return false;
       }
       if (!Objects.equals(this.last, other.last)) {
         return false;
       }
-      return Objects.equals(this.birth, other.birth);
+      if (!Objects.equals(this.birth, other.birth)) {
+        return false;
+      }
+      if (!Objects.equals(this.address, other.address)) {
+        return false;
+      }
+      return Arrays.equals(this.ids, other.ids);
+    }
+    
+    @Override
+    public String toString() {
+      return "Person{" + "name=" + name + ", last=" + last + ", birth=" + birth + ", address=" + address + ", ids=" + Arrays.toString(ids) + '}';
+    }
+    
+  }
+  
+  
+  public static class Address {
+    
+    private final String street;
+    
+    private final String city;
+    
+    private final int number;
+    
+    //@MapConstructor({"street", "city", "number"})
+    public Address(String street, String city, int number) {
+      this.street = Objects.requireNonNull(street);
+      this.city = Objects.requireNonNull(city);
+      this.number = number;
+    }
+    
+    @Binary
+    public String street() {
+      return street;
+    }
+    
+    @Binary
+    public String city() {
+      return city;
+    }
+    
+    @Binary
+    public int number() {
+      return number;
+    }
+
+    @Override
+    public int hashCode() {
+      int hash = 7;
+      hash = 29 * hash + Objects.hashCode(this.street);
+      hash = 29 * hash + Objects.hashCode(this.city);
+      hash = 29 * hash + this.number;
+      return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final Address other = (Address) obj;
+      if (this.number != other.number) {
+        return false;
+      }
+      if (!Objects.equals(this.street, other.street)) {
+        return false;
+      }
+      return Objects.equals(this.city, other.city);
     }
 
     @Override
     public String toString() {
-      return "Person{" + "name=" + name + ", last=" + last + ", birth=" + birth + ", id=" + id + '}';
+      return "Address{" + "street=" + street + ", city=" + city + ", number=" + number + '}';
     }
     
   }
