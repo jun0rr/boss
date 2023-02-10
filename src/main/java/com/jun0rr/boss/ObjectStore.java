@@ -18,20 +18,22 @@ public interface ObjectStore {
   
   public long store(Object o);
   
-  public void update(long id, Object o);
+  public <T> Optional<Stored<T>> get(long id);
   
-  public <T> void update(long id, UnaryOperator<T> update);
+  public long update(long id, Object o);
+  
+  public <T> long update(long id, UnaryOperator<T> update);
   
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p);
   
   public <T,V> Stream<Stored<T>> find(Class<T> c, String name, Predicate<V> p);
   
-  public <T> Optional<T> delete(long id);
+  public <T> Optional<Stored<T>> delete(long id);
   
-  public <T> Stream<T> delete(Class<T> c, Predicate<T> p);
+  public <T> Stream<Stored<T>> delete(Class<T> c, Predicate<T> p);
   
   public <T,R> void createIndex(Class<T> c, String name, Function<T,R> fn);
   
-  public IndexStore indexes();
+  public IndexStore index();
   
 }

@@ -4,38 +4,39 @@
  */
 package com.jun0rr.boss.def;
 
-import java.nio.ByteBuffer;
+import com.jun0rr.boss.IndexValue;
 import java.util.Objects;
 
 /**
  *
  * @author F6036477
  */
-public class OffsetBuffer {
+public class DefaultIndexValue implements IndexValue {
   
-  private final ByteBuffer buffer;
+  private final Object value;
   
-  private final int offset;
+  private final int index;
   
-  
-  public OffsetBuffer(int offset, ByteBuffer buf) {
-    this.buffer = Objects.requireNonNull(buf);
-    this.offset = offset;
+  public DefaultIndexValue(Object o, int i) {
+    this.value = Objects.requireNonNull(o);
+    this.index = i;
   }
-  
-  public ByteBuffer buffer() {
-    return buffer;
+
+  @Override
+  public Object value() {
+    return value;
   }
-  
-  public int offset() {
-    return offset;
+
+  @Override
+  public int index() {
+    return index;
   }
 
   @Override
   public int hashCode() {
     int hash = 7;
-    hash = 79 * hash + Objects.hashCode(this.buffer);
-    hash = 79 * hash + this.offset;
+    hash = 83 * hash + Objects.hashCode(this.value);
+    hash = 83 * hash + this.index;
     return hash;
   }
 
@@ -50,16 +51,16 @@ public class OffsetBuffer {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final OffsetBuffer other = (OffsetBuffer) obj;
-    if (this.offset != other.offset) {
+    final DefaultIndexValue other = (DefaultIndexValue) obj;
+    if (this.index != other.index) {
       return false;
     }
-    return Objects.equals(this.buffer, other.buffer);
+    return Objects.equals(this.value, other.value);
   }
 
   @Override
   public String toString() {
-    return "OffsetBuffer{" + "offset=" + offset + ", buffer=" + buffer + '}';
+    return "IndexValue{" + "value=" + value + ", index=" + index + '}';
   }
   
 }

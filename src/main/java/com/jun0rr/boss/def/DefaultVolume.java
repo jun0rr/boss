@@ -233,7 +233,7 @@ public class DefaultVolume implements Volume {
 
   @Override
   public String toString() {
-    return "Volume{" + "id=" + id + ", blockSize=" + blockSize + ", woffset=" + woffset + ", buffers=" + buffers + ", freebufs=" + freebufs + '}';
+    return "Volume{" + "id=" + id + ", blockSize=" + blockSize + ", woffset=" + woffset + ", buffers=" + buffers.size() + ", freebufs=" + freebufs + '}';
   }
 
 }
