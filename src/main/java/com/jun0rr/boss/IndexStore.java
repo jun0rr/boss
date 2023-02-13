@@ -4,9 +4,10 @@
  */
 package com.jun0rr.boss;
 
+import com.jun0rr.binj.BinType;
+import com.jun0rr.binj.mapping.Binary;
 import com.jun0rr.boss.store.IndexType;
 import com.jun0rr.boss.store.IndexValue;
-import com.jun0rr.jbom.BinType;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,10 +21,13 @@ import java.util.stream.IntStream;
  */
 public interface IndexStore {
   
+  @Binary
   public Map<BinType,List<Integer>> classIndex();
   
+  @Binary
   public Map<Long,Integer> idIndex();
   
+  @Binary
   public Map<IndexType,List<IndexValue>> valueIndex();
   
   public default <T> IntStream findByValue(Class c, String name, Predicate<T> p) {

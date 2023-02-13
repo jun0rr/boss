@@ -4,9 +4,9 @@
  */
 package com.jun0rr.boss.volume;
 
+import com.jun0rr.binj.buffer.BinBuffer;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
-import com.jun0rr.jbom.buffer.BinBuffer;
 import java.util.Objects;
 
 /**

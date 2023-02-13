@@ -4,13 +4,17 @@
  */
 package com.jun0rr.boss.store;
 
+import com.jun0rr.binj.BinCodec;
+import com.jun0rr.binj.BinContext;
+import com.jun0rr.binj.BinType;
+import com.jun0rr.binj.ContextEvent;
+import com.jun0rr.binj.codec.ArrayCodec;
+import com.jun0rr.binj.codec.EnumCodec;
+import com.jun0rr.binj.codec.ObjectCodec;
 import com.jun0rr.boss.IndexStore;
 import com.jun0rr.boss.Block;
-import com.jun0rr.boss.volume.MetaKey;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
-import com.jun0rr.jbom.BinContext;
-import com.jun0rr.jbom.ContextEvent;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -19,6 +23,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -26,6 +31,11 @@ import java.util.stream.Stream;
  * @author F6036477
  */
 public class DefaultObjectStore implements ObjectStore {
+  
+  public static final String KEY_BINTYPES = "bintypes";
+  
+  public static final String KEY_INDEXES = "indexes";
+  
   
   private final Volume volume;
   
@@ -43,6 +53,29 @@ public class DefaultObjectStore implements ObjectStore {
     this.volume = Objects.requireNonNull(v);
     this.context = Objects.requireNonNull(c);
     this.index = new DefaultIndexStore();
+  }
+  
+  private void load() {
+    if(volume.metadata().containsKey(KEY_BINTYPES)) {
+      List<BinType> types = (List<BinType>) volume.metadata().get(KEY_BINTYPES);
+      types.forEach(b->{
+        if(b.type().isEnum()) {
+          context.codecs().put(b, new EnumCodec(context));
+        }
+        else if(b.type().isArray()) {
+          context.codecs().put(b, new ArrayCodec(context, b));
+        }
+        else {
+          context.codecs().put(b, new ObjectCodec(context, context.mapper(), b));
+        }
+      });
+    }
+    if(volume.metadata().containsKey(KEY_INDEXES)) {
+      IndexStore is = (IndexStore) volume.metadata().get(KEY_INDEXES);
+      index.classIndex().putAll(is.classIndex());
+      index.idIndex().putAll(is.idIndex());
+      index.valueIndex().putAll(is.valueIndex());
+    }
   }
 
   @Override
@@ -65,7 +98,7 @@ public class DefaultObjectStore implements ObjectStore {
           .flatMap(s->s.extractors(o.getClass()).stream())
           .filter(f->f.name().equals(entry.get().getKey().name()))
           .findAny().get().extract(o);
-      entry.get().getValue().add(new DefaultIndexValue(val, b.index()));
+      entry.get().getValue().add(new IndexValue(val, b.index()));
     }
     return Stored.of(evt.checksum(), b.index(), o);
   }
@@ -136,12 +169,12 @@ public class DefaultObjectStore implements ObjectStore {
 
   @Override
   public <T, R> void createIndex(Class<T> c, String name, Function<T, R> fn) {
-    IndexType t = new DefaultIndexType(context.getBinType(c), name);
+    IndexType t = new IndexType(context.getBinType(c), name);
     List<IndexValue> ls = new CopyOnWriteArrayList<>();
     index.findByType(c)
         .mapToObj(volume::get)
         .map(b->Stored.of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())))
-        .map(s->new DefaultIndexValue(fn.apply(s.object()), s.index()))
+        .map(s->new IndexValue(fn.apply(s.object()), s.index()))
         .forEach(ls::add);
     index.valueIndex().put(t, ls);
   }
@@ -153,6 +186,15 @@ public class DefaultObjectStore implements ObjectStore {
   
   @Override
   public void close() {
+    List<BinType> types = context.codecs().keySet().stream()
+        .filter(b->!BinCodec.DEFAULT_BINTYPES.contains(b))
+        .collect(Collectors.toList());
+    if(!types.isEmpty()) {
+      volume.metadata().put(KEY_BINTYPES, types);
+    }
+    if(!index.idIndex().isEmpty()) {
+      volume.metadata().put(KEY_INDEXES, index);
+    }
     volume.close();
   }
 

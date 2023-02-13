@@ -4,8 +4,8 @@
  */
 package com.jun0rr.boss.store;
 
+import com.jun0rr.binj.BinType;
 import com.jun0rr.boss.IndexStore;
-import com.jun0rr.jbom.BinType;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

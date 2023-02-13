@@ -3,5 +3,5 @@
 
 module jun0rr.boss {
   requires java.base;
-  requires jun0rr.jbom;
+  requires jun0rr.binj;
 }

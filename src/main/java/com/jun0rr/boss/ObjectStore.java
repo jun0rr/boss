@@ -4,19 +4,17 @@
  */
 package com.jun0rr.boss;
 
+import com.jun0rr.binj.BinContext;
+import com.jun0rr.binj.buffer.BufferAllocator;
+import com.jun0rr.binj.buffer.FileNameSupplier;
+import com.jun0rr.binj.mapping.ConstructStrategy;
+import com.jun0rr.binj.mapping.ExtractStrategy;
+import com.jun0rr.binj.mapping.InjectStrategy;
+import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
 import com.jun0rr.boss.store.ObjectStoreException;
 import com.jun0rr.boss.store.Stored;
 import com.jun0rr.boss.store.DefaultObjectStore;
 import com.jun0rr.boss.volume.DefaultVolume;
-import com.jun0rr.boss.volume.FirstBlockPersistStrategy;
-import com.jun0rr.boss.volume.NoPersistStrategy;
-import com.jun0rr.jbom.BinContext;
-import com.jun0rr.jbom.buffer.BufferAllocator;
-import com.jun0rr.jbom.buffer.FileNameSupplier;
-import com.jun0rr.jbom.mapping.ConstructStrategy;
-import com.jun0rr.jbom.mapping.ExtractStrategy;
-import com.jun0rr.jbom.mapping.InjectStrategy;
-import com.jun0rr.jbom.mapping.NoArgsConstructStrategy;
 import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -258,7 +256,6 @@ public interface ObjectStore extends Closeable {
       if(this.injectStrategy != null) {
         ctx.mapper().injectStrategy().add(injectStrategy);
       }
-      MetaPersistStrategy mps = new NoPersistStrategy();
       BufferAllocator malloc = BufferAllocator.heapAllocator(bufferSize);
       switch(this.allocType) {
         case DIRECT:
@@ -268,17 +265,19 @@ public interface ObjectStore extends Closeable {
           if(this.storePath == null) {
             throw new IllegalStateException("Store path is not defined");
           }
-          malloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volumeId, "db"), bufferSize, true);
-          mps = new FirstBlockPersistStrategy(ctx);
+          malloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volumeId, "db"), bufferSize, false);
           break;
       }
       Supplier<String> fname = new FileNameSupplier(volumeId, "db");
       List<ByteBuffer> bufs = new LinkedList<>();
-      while(Files.exists(storePath.resolve(fname.get()))) {
+      String file = fname.get();
+      while(Files.exists(storePath.resolve(file))) {
+        System.out.println("file=" + file);
         bufs.add(malloc.alloc());
+        file = fname.get();
       }
-      Volume vol = new DefaultVolume(volumeId, blockSize, bufs, malloc, mps);
-      return new DefaultObjectStore((bufs.isEmpty() ? vol : vol.loadNewVolume()), ctx);
+      Volume vol = new DefaultVolume(volumeId, blockSize, bufs, ctx, malloc);
+      return new DefaultObjectStore(vol, ctx);
     }
     
   }

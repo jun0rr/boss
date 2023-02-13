@@ -4,7 +4,7 @@
  */
 package com.jun0rr.boss;
 
-import com.jun0rr.jbom.buffer.BinBuffer;
+import com.jun0rr.binj.buffer.BinBuffer;
 
 /**
  *

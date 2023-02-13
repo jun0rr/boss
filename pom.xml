@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>com.jun0rr</groupId>
-            <artifactId>jbom</artifactId>
+            <artifactId>binj</artifactId>
             <version>1.0</version>
         </dependency>
         <dependency>

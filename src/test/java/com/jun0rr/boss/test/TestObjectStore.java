@@ -4,10 +4,10 @@
  */
 package com.jun0rr.boss.test;
 
+import com.jun0rr.binj.mapping.Binary;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.store.Stored;
 import com.jun0rr.boss.test.TestObjectStore.Person;
-import com.jun0rr.jbom.mapping.Binary;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -17,6 +17,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
@@ -48,14 +49,26 @@ public class TestObjectStore {
     System.out.println(props);
     ObjectStore os = ObjectStore.builder().load(props).build();
     List<Person> ps = new LinkedList<>();
-    for(int i = 0; i < 10; i++) {
-      ps.add(new Person("Hello" + i, "World" + i, LocalDate.of(1980, i+1, i+10), new Address("Street" + i, "SomeCity", 10+i), new long[]{(long)(Math.random() * Long.MAX_VALUE)}));
+    if(os.indexStore().findByType(Person.class).count() == 0) {
+      for(int i = 0; i < 10; i++) {
+        ps.add(new Person("Hello" + i, "World" + i, LocalDate.of(1980, i+1, i+10), new Address("Street" + i, "SomeCity", 10+i), new long[]{(long)(Math.random() * Long.MAX_VALUE)}));
+        Stored<Person> s = os.store(ps.get(i));
+        System.out.println(s);
+      }
+      os.close();
+      os = ObjectStore.builder().load(props).build();
+    }
+    else {
+      os.find(Person.class, p->true)
+          .map(Stored::object)
+          .map(o->(Person)o)
+          .forEach(ps::add);
     }
     System.out.println(ps);
     // Test get
+    List<Stored<Person>> sps = os.find(Person.class, p->true).collect(Collectors.toList());
     for(int i = 0; i < 10; i++) {
-      Stored<Person> s = os.store(ps.get(i));
-      Optional<Stored<Person>> p = os.get(s.id());
+      Stored<Person> s = sps.get(i);
       Assertions.assertTrue(os.indexStore().classIndex().entrySet()
           .stream()
           .filter(e->e.getKey().isTypeOf(Person.class))
@@ -69,7 +82,7 @@ public class TestObjectStore {
           .map(Entry::getValue)
           .anyMatch(x->x == s.index())
       );
-      Assertions.assertEquals(ps.get(i), p.get().object());
+      Assertions.assertEquals(ps.get(i), s.object());
     }
     // Test indexes
     os.createIndex(Person.class, "name", p->p.name());
@@ -142,7 +155,7 @@ public class TestObjectStore {
       Assertions.assertEquals(ps.get(i), b.object());
     }
     os.close();
-    } catch(Exception e) { e.printStackTrace(); throw e; }
+    } catch(Throwable e) { e.printStackTrace(); throw e; }
   }
   
   
