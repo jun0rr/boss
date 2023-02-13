@@ -2,16 +2,16 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
  */
-package com.jun0rr.boss;
+package com.jun0rr.boss.store;
 
 /**
  *
  * @author F6036477
  */
-public interface MetaPersistStrategy {
+public interface IndexValue<T> {
   
-  public void save(Volume v);
+  public T value();
   
-  public void load(Volume v);
+  public int index();
   
 }

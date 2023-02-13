@@ -16,6 +16,6 @@ public interface Block {
   
   public BinBuffer buffer();
   
-  public int offset();
+  public int index();
   
 }

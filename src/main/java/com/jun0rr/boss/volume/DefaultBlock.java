@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.jun0rr.boss.def;
+package com.jun0rr.boss.volume;
 
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
@@ -41,7 +41,7 @@ public class DefaultBlock implements Block {
   }
 
   @Override
-  public int offset() {
+  public int index() {
     return offset;
   }
 

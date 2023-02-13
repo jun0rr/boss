@@ -2,11 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.jun0rr.boss.def;
+package com.jun0rr.boss.store;
 
 import com.jun0rr.boss.IndexStore;
-import com.jun0rr.boss.IndexType;
-import com.jun0rr.boss.IndexValue;
 import com.jun0rr.jbom.BinType;
 import java.util.List;
 import java.util.Map;

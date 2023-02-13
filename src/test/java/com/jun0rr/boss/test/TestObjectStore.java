@@ -5,23 +5,20 @@
 package com.jun0rr.boss.test;
 
 import com.jun0rr.boss.ObjectStore;
-import com.jun0rr.boss.Volume;
-import com.jun0rr.boss.def.DefaultObjectStore;
-import com.jun0rr.boss.def.DefaultVolume;
-import com.jun0rr.boss.def.NoPersistStrategy;
-import com.jun0rr.jbom.BinContext;
-import com.jun0rr.jbom.buffer.BufferAllocator;
-import com.jun0rr.jbom.mapping.AnnotationExtractStrategy;
+import com.jun0rr.boss.store.Stored;
+import com.jun0rr.boss.test.TestObjectStore.Person;
 import com.jun0rr.jbom.mapping.Binary;
-import com.jun0rr.jbom.mapping.DefaultConstructStrategy;
-import com.jun0rr.jbom.mapping.ObjectMapper;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 
 /**
  *
@@ -30,47 +27,122 @@ import org.junit.jupiter.api.Test;
 public class TestObjectStore {
   
   @Test
-  public void test() {
-    ObjectMapper mp = new ObjectMapper();
-    mp.constructStrategy().add(new DefaultConstructStrategy());
-    mp.extractStrategy().add(new AnnotationExtractStrategy());
-    BinContext ctx = BinContext.of(mp);
-    Volume vol = new DefaultVolume("TestObjectStore", 128, BufferAllocator.directAllocator(256), new NoPersistStrategy());
-    ObjectStore os = new DefaultObjectStore(vol, ctx);
+  public void test() throws IOException {
+    //ObjectMapper mp = new ObjectMapper();
+    //mp.constructStrategy().add(new DefaultConstructStrategy());
+    //mp.extractStrategy().add(new AnnotationExtractStrategy());
+    //BinContext ctx = BinContext.of(mp);
+    //Volume vol = new DefaultVolume("TestObjectStore", 128, BufferAllocator.directAllocator(256), new NoPersistStrategy());
+    //ObjectStore os = new DefaultObjectStore(vol, ctx);
+    //ObjectStore os = ObjectStore.builder()
+        //.setBlockSize(128)
+        //.setBufferAllocatorType(ObjectStore.Builder.AllocatorType.DIRECT)
+        //.setBufferSize(256)
+        //.setConstructStrategy(new DefaultConstructStrategy())
+        //.setExtractStrategy(new AnnotationExtractStrategy())
+        //.setVolumeId("TestObjectStore")
+        //.build();
+    try {
+    Properties props = new Properties();
+    props.load(TestObjectStore.class.getResourceAsStream("/boss.properties"));
+    System.out.println(props);
+    ObjectStore os = ObjectStore.builder().load(props).build();
     List<Person> ps = new LinkedList<>();
     for(int i = 0; i < 10; i++) {
       ps.add(new Person("Hello" + i, "World" + i, LocalDate.of(1980, i+1, i+10), new Address("Street" + i, "SomeCity", 10+i), new long[]{(long)(Math.random() * Long.MAX_VALUE)}));
     }
     System.out.println(ps);
-    ps.forEach(os::store);
-    System.out.println("--- classIndex: Person");
-    os.index().classIndex().entrySet().stream()
-        .filter(e->e.getKey().isTypeOf(Person.class))
-        .map(Entry::getValue)
-        .flatMap(List::stream)
-        .forEach(System.out::println);
-    System.out.println("--- classIndex: Address");
-    os.index().classIndex().entrySet().stream()
-        .filter(e->e.getKey().isTypeOf(Address.class))
-        .map(Entry::getValue)
-        .flatMap(List::stream)
-        .forEach(System.out::println);
-    System.out.println("--- volume:");
-    System.out.println(vol);
-    System.out.println("--- createIndex: name");
+    // Test get
+    for(int i = 0; i < 10; i++) {
+      Stored<Person> s = os.store(ps.get(i));
+      Optional<Stored<Person>> p = os.get(s.id());
+      Assertions.assertTrue(os.indexStore().classIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey().isTypeOf(Person.class))
+          .map(Entry::getValue)
+          .flatMap(List::stream)
+          .anyMatch(x->x == s.index())
+      );
+      Assertions.assertTrue(os.indexStore().idIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey() == s.id())
+          .map(Entry::getValue)
+          .anyMatch(x->x == s.index())
+      );
+      Assertions.assertEquals(ps.get(i), p.get().object());
+    }
+    // Test indexes
     os.createIndex(Person.class, "name", p->p.name());
-    os.find(Person.class, "name", s->"Hello7".equals(s)).forEach(System.out::println);
-    System.out.println("--- createIndex: birth");
     os.createIndex(Person.class, "birth", p->p.birth());
-    System.out.println("--- valueIndex:");
-    os.index().valueIndex().entrySet().stream()
-        .filter(e->e.getKey().type().isTypeOf(Person.class))
-        .peek(e->System.out.println(e.getKey()))
-        .map(Entry::getValue)
-        .flatMap(List::stream)
-        .forEach(System.out::println);
-    System.out.println("--- findByField: birth");
-    os.find(Person.class, "birth", d->LocalDate.of(1980, 5, 14).equals(d)).forEach(System.out::println);
+    for(int i = 0; i < 10; i++) {
+      int x = i;
+      Stored<Person> a = os.find(Person.class, "name", s->"Hello".concat(String.valueOf(x)).equals(s)).findFirst().get();
+      Assertions.assertTrue(os.indexStore().classIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey().isTypeOf(Person.class))
+          .map(Entry::getValue)
+          .flatMap(List::stream)
+          .anyMatch(j->j == a.index())
+      );
+      Assertions.assertTrue(os.indexStore().idIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey() == a.id())
+          .map(Entry::getValue)
+          .anyMatch(j->j == a.index())
+      );
+      Assertions.assertEquals(ps.get(i), a.object());
+      Stored<Person> b = os.find(Person.class, "birth", d->LocalDate.of(1980, x+1, x+10).equals(d)).findFirst().get();
+      Assertions.assertTrue(os.indexStore().classIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey().isTypeOf(Person.class))
+          .map(Entry::getValue)
+          .flatMap(List::stream)
+          .anyMatch(j->j == b.index())
+      );
+      Assertions.assertTrue(os.indexStore().idIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey() == b.id())
+          .map(Entry::getValue)
+          .anyMatch(j->j == b.index())
+      );
+      Assertions.assertEquals(ps.get(i), b.object());
+    }
+    // Test find predicate
+    for(int i = 0; i < 10; i++) {
+      int x = i;
+      Stored<Person> a = os.find(Person.class, p->"Hello".concat(String.valueOf(x)).equals(p.name())).findFirst().get();
+      Assertions.assertTrue(os.indexStore().classIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey().isTypeOf(Person.class))
+          .map(Entry::getValue)
+          .flatMap(List::stream)
+          .anyMatch(j->j == a.index())
+      );
+      Assertions.assertTrue(os.indexStore().idIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey() == a.id())
+          .map(Entry::getValue)
+          .anyMatch(j->j == a.index())
+      );
+      Assertions.assertEquals(ps.get(i), a.object());
+      Stored<Person> b = os.find(Person.class, p->LocalDate.of(1980, x+1, x+10).equals(p.birth())).findFirst().get();
+      Assertions.assertTrue(os.indexStore().classIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey().isTypeOf(Person.class))
+          .map(Entry::getValue)
+          .flatMap(List::stream)
+          .anyMatch(j->j == b.index())
+      );
+      Assertions.assertTrue(os.indexStore().idIndex().entrySet()
+          .stream()
+          .filter(e->e.getKey() == b.id())
+          .map(Entry::getValue)
+          .anyMatch(j->j == b.index())
+      );
+      Assertions.assertEquals(ps.get(i), b.object());
+    }
+    os.close();
+    } catch(Exception e) { e.printStackTrace(); throw e; }
   }
   
   

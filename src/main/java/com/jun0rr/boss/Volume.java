@@ -4,6 +4,7 @@
  */
 package com.jun0rr.boss;
 
+import com.jun0rr.boss.volume.MetaKey;
 import java.io.Closeable;
 import java.util.Map;
 
@@ -28,7 +29,5 @@ public interface Volume extends Closeable {
   public Block get(int offset);
   
   @Override public void close();
-  
-  public Map<MetaKey,Object> metadata();
   
 }

@@ -4,6 +4,8 @@
  */
 package com.jun0rr.boss;
 
+import com.jun0rr.boss.store.IndexType;
+import com.jun0rr.boss.store.IndexValue;
 import com.jun0rr.jbom.BinType;
 import java.util.List;
 import java.util.Map;

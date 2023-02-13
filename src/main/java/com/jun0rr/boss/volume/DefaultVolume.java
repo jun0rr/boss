@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.jun0rr.boss.def;
+package com.jun0rr.boss.volume;
 
 import com.jun0rr.boss.Volume;
 import com.jun0rr.jbom.buffer.BinBuffer;
@@ -18,11 +18,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import com.jun0rr.boss.Block;
-import com.jun0rr.boss.MetaKey;
-import com.jun0rr.boss.MetaPersistStrategy;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
 /**
@@ -30,6 +25,8 @@ import java.util.stream.IntStream;
  * @author F6036477
  */
 public class DefaultVolume implements Volume {
+  
+  public static final byte METADATA_ID = 55;
   
   private final String id;
   
@@ -43,33 +40,34 @@ public class DefaultVolume implements Volume {
   
   private final AtomicInteger woffset;
   
-  private final Map<MetaKey,Object> metadata;
-  
-  private final MetaPersistStrategy strategy;
-  
-  protected DefaultVolume(String id, int blockSize, int woffset, int[] freeofs, List<ByteBuffer> bufs, BufferAllocator ba, MetaPersistStrategy mps) {
+  public DefaultVolume(String id, int blockSize, List<ByteBuffer> bufs, BufferAllocator ba) {
     this.id = Objects.requireNonNull(id);
     this.malloc = Objects.requireNonNull(ba);
     this.blockSize = blockSize;
     this.freebufs = new ConcurrentLinkedQueue<>();
-    this.buffers = Objects.requireNonNull(bufs);
-    this.woffset = new AtomicInteger(woffset);
-    this.metadata = new ConcurrentHashMap<>();
-    this.strategy = Objects.requireNonNull(mps);
-    IntStream.of(freeofs)
-        .mapToObj(i->getOffsetBuffer(i))
-        .forEach(freebufs::add);
+    this.buffers = new CopyOnWriteArrayList<>();
+    buffers.addAll(bufs);
+    this.woffset = new AtomicInteger(blockSize);
+    loadFreebufs();
   }
   
-  public DefaultVolume(String id, int blockSize, BufferAllocator ba, MetaPersistStrategy mps) {
+  public DefaultVolume(String id, int blockSize, BufferAllocator ba) {
     this.id = Objects.requireNonNull(id);
     this.malloc = Objects.requireNonNull(ba);
     this.blockSize = blockSize;
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = new CopyOnWriteArrayList<>();
     this.woffset = new AtomicInteger(blockSize);
-    this.metadata = new ConcurrentHashMap<>();
-    this.strategy = Objects.requireNonNull(mps);
+  }
+  
+  private void loadFreebufs() {
+    if(buffers.isEmpty()) return;
+    Block b = get(0);
+    if(METADATA_ID == b.buffer().get()) {
+      woffset.set(b.buffer().getInt());
+      int size = b.buffer().getShort();
+      IntStream.range(0, size).forEach(i->freebufs.add(getOffsetBuffer(b.buffer().getInt())));
+    }
   }
   
   @Override
@@ -148,7 +146,7 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Volume release(Block blk) {
-    return release(blk.offset());
+    return release(blk.index());
   }
 
   @Override
@@ -176,7 +174,9 @@ public class DefaultVolume implements Volume {
     OffsetBuffer last = buf;
     while(last != null) {
       bufs.add(last.buffer().position(Integer.BYTES).slice());
-      last = getOffsetBuffer(last.buffer().position(0).getInt());
+      int next = last.buffer().position(0).getInt();
+      //System.out.println("Volume.get(): next=" + next);
+      last = next != offset ? getOffsetBuffer(next) : null;
     }
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
     return new DefaultBlock(this, buffer, buf.offset());
@@ -187,16 +187,13 @@ public class DefaultVolume implements Volume {
     int[] offsets = new int[freebufs.size()];
     AtomicInteger i = new AtomicInteger(0);
     freebufs.forEach(o->offsets[i.getAndIncrement()] = o.offset());
-    metadata.put(MetaKey.VOLUME, new DefaultVolumeMetadata(id, blockSize, woffset.get(), offsets));
-    strategy.save(this);
+    Block b = get(0);
+    release(b);
+    b.buffer().put(METADATA_ID).putInt(woffset.get()).putShort((short)offsets.length);
+    IntStream.of(offsets).forEach(b.buffer()::putInt);
     malloc.close();
   }
   
-  @Override
-  public Map<MetaKey,Object> metadata() {
-    return metadata;
-  }
-
   @Override
   public int hashCode() {
     int hash = 5;
