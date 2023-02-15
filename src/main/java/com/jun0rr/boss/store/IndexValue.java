@@ -17,9 +17,9 @@ public class IndexValue {
   
   private final int index;
   
-  public IndexValue(Object o, int i) {
-    this.value = Objects.requireNonNull(o);
-    this.index = i;
+  public IndexValue(Object value, int index) {
+    this.value = Objects.requireNonNull(value);
+    this.index = index;
   }
 
   @Binary

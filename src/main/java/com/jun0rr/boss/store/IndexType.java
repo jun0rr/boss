@@ -18,8 +18,8 @@ public class IndexType {
   
   private final String name;
   
-  public IndexType(BinType t, String name) {
-    this.type = Objects.requireNonNull(t);
+  public IndexType(BinType type, String name) {
+    this.type = Objects.requireNonNull(type);
     this.name = Objects.requireNonNull(name);
   }
 

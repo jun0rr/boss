@@ -199,8 +199,8 @@ public class DefaultVolume implements Volume {
     while(last != null) {
       bufs.add(last.buffer().position(Integer.BYTES).slice());
       int next = last.buffer().position(0).getInt();
-      //System.out.printf("Volume.get( %d ): next=%s%n", offset, next);
-      last = next != offset ? getOffsetBuffer(next) : null;
+      last = next != offset && next != last.offset() ? getOffsetBuffer(next) : null;
+      System.out.printf("Volume.get( %d ): next=%s, last=%s%n", offset, next, last);
     }
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
     return new DefaultBlock(this, buffer, buf.offset());

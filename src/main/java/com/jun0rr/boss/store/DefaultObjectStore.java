@@ -47,12 +47,14 @@ public class DefaultObjectStore implements ObjectStore {
     this.volume = Objects.requireNonNull(v);
     this.context = Objects.requireNonNull(c);
     this.index = Objects.requireNonNull(i);
+    load();
   }
 
   public DefaultObjectStore(Volume v, BinContext c) {
     this.volume = Objects.requireNonNull(v);
     this.context = Objects.requireNonNull(c);
     this.index = new DefaultIndexStore();
+    load();
   }
   
   private void load() {
