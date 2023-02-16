@@ -58,7 +58,7 @@ public class TestVolume {
     while(Files.exists(path.resolve(fname.get()))) {
       bufs.add(alloc.alloc());
     }
-    Volume v = new DefaultVolume("testMapped", 64, bufs, ctx, BufferAllocator.mappedFileAllocator(
+    Volume v = new DefaultVolume("testMapped", 64, bufs, BufferAllocator.mappedFileAllocator(
         path, new FileNameSupplier("testMapped", "db"), 128, false)
     );
     //System.out.println(v);

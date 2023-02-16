@@ -9,9 +9,10 @@ import com.jun0rr.binj.BinType;
 import com.jun0rr.binj.buffer.BufferAllocator;
 import com.jun0rr.binj.buffer.FileNameSupplier;
 import com.jun0rr.binj.codec.ObjectCodec;
-import com.jun0rr.binj.mapping.ConstructStrategy;
-import com.jun0rr.binj.mapping.ExtractStrategy;
-import com.jun0rr.binj.mapping.InjectStrategy;
+import com.jun0rr.binj.mapping.ConstructFunction;
+import com.jun0rr.binj.mapping.ExtractFunction;
+import com.jun0rr.binj.mapping.InjectFunction;
+import com.jun0rr.binj.mapping.InvokeStrategy;
 import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
@@ -67,13 +68,13 @@ public class ObjectStoreBuilder {
   }
 
 
-  private ConstructStrategy constructStrategy;
+  private InvokeStrategy<ConstructFunction> constructStrategy;
 
-  private ExtractStrategy extractStrategy;
+  private InvokeStrategy<ExtractFunction> extractStrategy;
 
-  private InjectStrategy injectStrategy;
+  private InvokeStrategy<InjectFunction> injectStrategy;
 
-  private String volumeId;
+  private String volid;
 
   private int blockSize;
 
@@ -85,39 +86,39 @@ public class ObjectStoreBuilder {
 
   public ObjectStoreBuilder() {}
 
-  public ConstructStrategy getConstructStrategy() {
+  public InvokeStrategy<ConstructFunction> getConstructStrategy() {
     return constructStrategy;
   }
 
-  public ObjectStoreBuilder setConstructStrategy(ConstructStrategy constructStrategy) {
+  public ObjectStoreBuilder setConstructStrategy(InvokeStrategy<ConstructFunction> constructStrategy) {
     this.constructStrategy = constructStrategy;
     return this;
   }
 
-  public ExtractStrategy getExtractStrategy() {
+  public InvokeStrategy<ExtractFunction> getExtractStrategy() {
     return extractStrategy;
   }
 
-  public ObjectStoreBuilder setExtractStrategy(ExtractStrategy extractStrategy) {
+  public ObjectStoreBuilder setExtractStrategy(InvokeStrategy<ExtractFunction> extractStrategy) {
     this.extractStrategy = extractStrategy;
     return this;
   }
 
-  public InjectStrategy getInjectStrategy() {
+  public InvokeStrategy<InjectFunction> getInjectStrategy() {
     return injectStrategy;
   }
 
-  public ObjectStoreBuilder setInjectStrategy(InjectStrategy injectStrategy) {
+  public ObjectStoreBuilder setInjectStrategy(InvokeStrategy<InjectFunction> injectStrategy) {
     this.injectStrategy = injectStrategy;
     return this;
   }
 
   public String getVolumeId() {
-    return volumeId;
+    return volid;
   }
 
   public ObjectStoreBuilder setVolumeId(String volumeId) {
-    this.volumeId = volumeId;
+    this.volid = volumeId;
     return this;
   }
 
@@ -159,27 +160,27 @@ public class ObjectStoreBuilder {
 
   @Override
   public String toString() {
-    return "Builder{" + "constructStrategy=" + constructStrategy + ", extractStrategy=" + extractStrategy + ", injectStrategy=" + injectStrategy + ", volumeId=" + volumeId + ", blockSize=" + blockSize + ", bufferSize=" + bufferSize + ", allocType=" + allocType + ", storePath=" + storePath + '}';
+    return "Builder{" + "constructStrategy=" + constructStrategy + ", extractStrategy=" + extractStrategy + ", injectStrategy=" + injectStrategy + ", volumeId=" + volid + ", blockSize=" + blockSize + ", bufferSize=" + bufferSize + ", allocType=" + allocType + ", storePath=" + storePath + '}';
   }
 
   public ObjectStoreBuilder load(Properties p) {
     try {
-      this.volumeId = p.getProperty(PROP_VOLUME_ID);
-      ConstructStrategy creator = new NoArgsConstructStrategy();
+      this.volid = p.getProperty(PROP_VOLUME_ID);
+      InvokeStrategy<ConstructFunction> creator = new NoArgsConstructStrategy();
       String cct = p.getProperty(PROP_CONSTRUCT_STRATEGY);
       if(cct != null) {
         Class cctClass = Class.forName(cct);
-        this.constructStrategy = creator.constructors(cctClass).stream().findFirst().get().create();
+        this.constructStrategy = creator.invokers(cctClass).stream().findFirst().get().create();
       }
       String ext = p.getProperty(PROP_EXTRACT_STRATEGY);
       if(ext != null) {
         Class extClass = Class.forName(ext);
-        this.extractStrategy = creator.constructors(extClass).stream().findFirst().get().create();
+        this.extractStrategy = creator.invokers(extClass).stream().findFirst().get().create();
       }
       String inj = p.getProperty(PROP_INJECT_STRATEGY);
       if(inj != null) {
         Class injClass = Class.forName(inj);
-        this.injectStrategy = creator.constructors(injClass).stream().findFirst().get().create();
+        this.injectStrategy = creator.invokers(injClass).stream().findFirst().get().create();
       }
       this.blockSize = Integer.parseInt(p.getProperty(PROP_BLOCK_SIZE));
       this.bufferSize = Integer.parseInt(p.getProperty(PROP_BUFFER_SIZE));
@@ -212,7 +213,7 @@ public class ObjectStoreBuilder {
     if(this.bufferSize == 0) {
       throw new IllegalStateException("Buffer size is not defined");
     }
-    if(this.volumeId == null) {
+    if(this.volid == null) {
       throw new IllegalStateException("Volume ID is not defined");
     }
     BinContext ctx = BinContext.newContext();
@@ -223,31 +224,37 @@ public class ObjectStoreBuilder {
     }
     BinType<IndexType> itype = BinType.of(IndexType.class);
     BinType<IndexValue> ivalue = BinType.of(IndexValue.class);
-    BinType<DefaultIndexStore> istore = BinType.of(DefaultIndexStore.class);
-    ctx.codecs().put(itype, new ObjectCodec(ctx, ctx.mapper(), itype));
-    ctx.codecs().put(ivalue, new ObjectCodec(ctx, ctx.mapper(), ivalue));
-    ctx.codecs().put(istore, new ObjectCodec(ctx, ctx.mapper(), istore));
-    BufferAllocator malloc = BufferAllocator.heapAllocator(bufferSize);
+    BinType<DefaultIndex> indexType = BinType.of(DefaultIndex.class);
+    ctx.codecs().put(itype, new ObjectCodec(ctx, itype));
+    ctx.codecs().put(ivalue, new ObjectCodec(ctx, ivalue));
+    ctx.codecs().put(indexType, new ObjectCodec(ctx, indexType));
+    BufferAllocator valloc = BufferAllocator.heapAllocator(bufferSize);
+    BufferAllocator ialloc = BufferAllocator.heapAllocator(bufferSize);
     switch(this.allocType) {
       case DIRECT:
-        malloc = BufferAllocator.directAllocator(bufferSize);
+        valloc = BufferAllocator.directAllocator(bufferSize);
         break;
       case MAPPED:
         if(this.storePath == null) {
           throw new IllegalStateException("Store path is not defined");
         }
-        malloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volumeId, "db"), bufferSize, false);
+        valloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "odb"), bufferSize, false);
+        ialloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "idx"), bufferSize, false);
         break;
     }
-    Supplier<String> fname = new FileNameSupplier(volumeId, "db");
-    List<ByteBuffer> bufs = new LinkedList<>();
-    String file = fname.get();
-    while(Files.exists(storePath.resolve(file))) {
-      bufs.add(malloc.alloc());
-      file = fname.get();
+    Supplier<String> vname = new FileNameSupplier(volid, "odb");
+    List<ByteBuffer> vbufs = new LinkedList<>();
+    while(Files.exists(storePath.resolve(vname.get()))) {
+      vbufs.add(valloc.alloc());
     }
-    Volume vol = new DefaultVolume(volumeId, blockSize, bufs, ctx, malloc);
-    return new DefaultObjectStore(vol, ctx);
+    Supplier<String> iname = new FileNameSupplier(volid, "idx");
+    List<ByteBuffer> ibufs = new LinkedList<>();
+    while(Files.exists(storePath.resolve(iname.get()))) {
+      ibufs.add(ialloc.alloc());
+    }
+    Volume vol = new DefaultVolume(volid, blockSize, vbufs, valloc);
+    Volume idx = new DefaultVolume(volid, blockSize, ibufs, ialloc);
+    return new DefaultObjectStore(vol, idx, ctx);
   }
     
 }

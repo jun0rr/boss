@@ -29,7 +29,7 @@ public interface ObjectStore extends Closeable {
   
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p);
   
-  public <T,V> Stream<Stored<T>> find(Class<T> c, String name, Predicate<V> p);
+  public <T,V> Stream<Stored<T>> find(Class<T> c, String name, V v);
   
   public <T> Optional<Stored<T>> delete(long id);
   
@@ -37,7 +37,9 @@ public interface ObjectStore extends Closeable {
   
   public <T,R> void createIndex(Class<T> c, String name, Function<T,R> fn);
   
-  public IndexStore indexStore();
+  public Index index();
+  
+  public boolean isLoaded();
   
   @Override public void close();
   

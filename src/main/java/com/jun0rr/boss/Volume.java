@@ -29,6 +29,6 @@ public interface Volume extends Closeable {
   
   @Override public void close();
   
-  public Map<String,Object> metadata();
+  public boolean isLoaded();
   
 }

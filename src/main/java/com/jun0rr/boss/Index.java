@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  *
  * @author F6036477
  */
-public interface IndexStore {
+public interface Index {
   
   @Binary
   public Map<BinType,List<Integer>> classIndex();
@@ -30,13 +30,16 @@ public interface IndexStore {
   @Binary
   public Map<IndexType,List<IndexValue>> valueIndex();
   
-  public default <T> IntStream findByValue(Class c, String name, Predicate<T> p) {
+  @Binary
+  public List<BinType> types();
+  
+  public default <T> IntStream findByValue(Class c, String name, T t) {
     return valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().isTypeOf(c))
         .filter(e->e.getKey().name().equals(name))
         .map(Entry::getValue)
         .flatMap(List::stream)
-        .filter(v->p.test((T)v.value()))
+        .filter(v->v.value().equals(t))
         .mapToInt(IndexValue::index);
   }
   
