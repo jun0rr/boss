@@ -217,6 +217,10 @@ public class ObjectStoreBuilder {
     if(this.volid == null) {
       throw new IllegalStateException("Volume ID is not defined");
     }
+    return new DefaultObjectStore(buildVolume(), buildContext());
+  }
+  
+  private BinContext buildContext() {
     BinContext ctx = BinContext.newContext();
     ctx.mapper().constructStrategy().add(constructStrategy);
     ctx.mapper().extractStrategy().add(extractStrategy);
@@ -229,18 +233,11 @@ public class ObjectStoreBuilder {
     ctx.codecs().put(itype, new ObjectCodec(ctx, itype));
     ctx.codecs().put(ivalue, new ObjectCodec(ctx, ivalue));
     ctx.codecs().put(indexType, new ObjectCodec(ctx, indexType));
-    BufferAllocator valloc = BufferAllocator.heapAllocator(bufferSize);
-    switch(this.allocType) {
-      case DIRECT:
-        valloc = BufferAllocator.directAllocator(bufferSize);
-        break;
-      case MAPPED:
-        if(this.storePath == null) {
-          throw new IllegalStateException("Store path is not defined");
-        }
-        valloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "odb"), bufferSize, false);
-        break;
-    }
+    return ctx;
+  }
+  
+  private Volume buildVolume() {
+    BufferAllocator valloc = buildAllocator();
     try {
       Supplier<String> vname = new FileNameSupplier(volid, "odb");
       List<ByteBuffer> vbufs = new LinkedList<>();
@@ -254,12 +251,27 @@ public class ObjectStoreBuilder {
         }
         path = storePath.resolve(vname.get());
       }
-      Volume vol = new DefaultVolume(volid, blockSize, vbufs, valloc);
-      return new DefaultObjectStore(vol, ctx);
+      return new DefaultVolume(volid, blockSize, vbufs, valloc);
     }
     catch(IOException e) {
       throw new ObjectStoreException(e);
     }
+  }
+  
+  private BufferAllocator buildAllocator() {
+    BufferAllocator alloc = BufferAllocator.heapAllocator(bufferSize);
+    switch(this.allocType) {
+      case DIRECT:
+        alloc = BufferAllocator.directAllocator(bufferSize);
+        break;
+      case MAPPED:
+        if(this.storePath == null) {
+          throw new IllegalStateException("Store path is not defined");
+        }
+        alloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "odb"), bufferSize, false);
+        break;
+    }
+    return alloc;
   }
     
 }
