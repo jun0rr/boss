@@ -10,6 +10,8 @@ import com.jun0rr.boss.volume.DefaultVolume;
 import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.buffer.BufferAllocator;
 import com.jun0rr.binj.buffer.FileNameSupplier;
+import com.jun0rr.boss.store.ObjectStoreException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,19 +50,23 @@ public class TestVolume {
   }
   
   @Test
-  public void testMapped() {
+  public void testMapped() throws Exception {
     try {
-    BinContext ctx = BinContext.newContext();
-    Path path = Paths.get("./").toAbsolutePath();
-    Supplier<String> fname = new FileNameSupplier("testMapped", "db");
-    BufferAllocator alloc = BufferAllocator.mappedFileAllocator(path, new FileNameSupplier("testMapped", "db"), 128, false);
+      Path root = Paths.get("./");
+    BufferAllocator alloc = BufferAllocator.mappedFileAllocator(root, new FileNameSupplier("testMapped", "db"), 128, false);
+    Supplier<String> name = new FileNameSupplier("testMapped", "odb");
     List<ByteBuffer> bufs = new LinkedList<>();
-    while(Files.exists(path.resolve(fname.get()))) {
-      bufs.add(alloc.alloc());
+    Path path = root.resolve(name.get());
+    while(Files.exists(path)) {
+      long size = Files.size(path);
+      long len = 0;
+      while(len < size) {
+        bufs.add(alloc.alloc());
+        len += 128;
+      }
+      path = root.resolve(name.get());
     }
-    Volume v = new DefaultVolume("testMapped", 64, bufs, BufferAllocator.mappedFileAllocator(
-        path, new FileNameSupplier("testMapped", "db"), 128, false)
-    );
+    Volume v = new DefaultVolume("testMapped", 64, bufs, alloc);
     //System.out.println(v);
     Block b = v.allocate();
     //System.out.println(b);

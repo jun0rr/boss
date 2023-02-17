@@ -26,7 +26,7 @@ public class TestObjectStore {
     try {
       Properties props = new Properties();
       props.load(getClass().getResourceAsStream("/boss.properties"));
-      ObjectStore store = ObjectStore.builder().load(props).build();
+      ObjectStore store = ObjectStore.builder().set(props).build();
       
       System.out.println(store);
       List<Person> ps = new LinkedList<>();

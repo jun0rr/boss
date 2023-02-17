@@ -164,7 +164,7 @@ public class ObjectStoreBuilder {
     return "Builder{" + "constructStrategy=" + constructStrategy + ", extractStrategy=" + extractStrategy + ", injectStrategy=" + injectStrategy + ", volumeId=" + volid + ", blockSize=" + blockSize + ", bufferSize=" + bufferSize + ", allocType=" + allocType + ", storePath=" + storePath + '}';
   }
 
-  public ObjectStoreBuilder load(Properties p) {
+  public ObjectStoreBuilder set(Properties p) {
     try {
       this.volid = p.getProperty(PROP_VOLUME_ID);
       InvokeStrategy<ConstructFunction> creator = new NoArgsConstructStrategy();
@@ -189,7 +189,6 @@ public class ObjectStoreBuilder {
       String path = p.getProperty(PROP_STORE_PATH);
       if(path != null) {
         this.storePath = Paths.get(path).toAbsolutePath();
-        //System.out.println("* ObjectStore.Builder.load(): storePath=" + storePath);
       }
     }
     catch(Exception e) {
