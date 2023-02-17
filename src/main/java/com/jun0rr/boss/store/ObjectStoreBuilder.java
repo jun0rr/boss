@@ -17,6 +17,7 @@ import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.volume.DefaultVolume;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -229,7 +230,6 @@ public class ObjectStoreBuilder {
     ctx.codecs().put(ivalue, new ObjectCodec(ctx, ivalue));
     ctx.codecs().put(indexType, new ObjectCodec(ctx, indexType));
     BufferAllocator valloc = BufferAllocator.heapAllocator(bufferSize);
-    BufferAllocator ialloc = BufferAllocator.heapAllocator(bufferSize);
     switch(this.allocType) {
       case DIRECT:
         valloc = BufferAllocator.directAllocator(bufferSize);
@@ -239,22 +239,27 @@ public class ObjectStoreBuilder {
           throw new IllegalStateException("Store path is not defined");
         }
         valloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "odb"), bufferSize, false);
-        ialloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "idx"), bufferSize, false);
         break;
     }
-    Supplier<String> vname = new FileNameSupplier(volid, "odb");
-    List<ByteBuffer> vbufs = new LinkedList<>();
-    while(Files.exists(storePath.resolve(vname.get()))) {
-      vbufs.add(valloc.alloc());
+    try {
+      Supplier<String> vname = new FileNameSupplier(volid, "odb");
+      List<ByteBuffer> vbufs = new LinkedList<>();
+      Path path = storePath.resolve(vname.get());
+      while(Files.exists(path)) {
+        long size = Files.size(path);
+        long len = 0;
+        while(len < size) {
+          vbufs.add(valloc.alloc());
+          len += bufferSize;
+        }
+        path = storePath.resolve(vname.get());
+      }
+      Volume vol = new DefaultVolume(volid, blockSize, vbufs, valloc);
+      return new DefaultObjectStore(vol, ctx);
     }
-    Supplier<String> iname = new FileNameSupplier(volid, "idx");
-    List<ByteBuffer> ibufs = new LinkedList<>();
-    while(Files.exists(storePath.resolve(iname.get()))) {
-      ibufs.add(ialloc.alloc());
+    catch(IOException e) {
+      throw new ObjectStoreException(e);
     }
-    Volume vol = new DefaultVolume(volid, blockSize, vbufs, valloc);
-    Volume idx = new DefaultVolume(volid, blockSize, ibufs, ialloc);
-    return new DefaultObjectStore(vol, idx, ctx);
   }
     
 }

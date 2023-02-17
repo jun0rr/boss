@@ -16,7 +16,7 @@ public interface Stored<T> {
   
   public int index();
   
-  public <T> T object();
+  public T object();
   
   
   public static <U> Stored<U> of(long id, int idx, U obj) {

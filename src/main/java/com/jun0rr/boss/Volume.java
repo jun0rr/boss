@@ -27,6 +27,8 @@ public interface Volume extends Closeable {
   
   public Block get(int offset);
   
+  public Block metadata();
+  
   @Override public void close();
   
   public boolean isLoaded();

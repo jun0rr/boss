@@ -43,14 +43,18 @@ public class TestObjectStore {
           .ifPresent(System.out::println);
       ps.remove(5);
       ps.remove(5);
+      Stored<Person> s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
+      System.out.println(store.<Person>update(s2.id(), p->new Person(p.name(), "World2", p.birth(), p.address(), p.ids())));
       for(Person p : ps) {
         assertEquals(p, store.find(Person.class, q->q.name().equals(p.name())).findFirst().get().object());
       }
       store.createIndex(Person.class, "birth", Person::birth);
       store.find(Person.class, "birth", LocalDate.of(1986, 7, 16))
-          .peek(s->System.out.println(store.get(s.id())))
+          .peek(s->System.out.println(s))
           .findFirst()
           .ifPresent(s->store.delete(s.id()));
+      s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
+      System.out.println(store.<Person>update(s2.id(), p->new Person(p.name(), "XXXX", p.birth(), p.address(), p.ids())));
       store.close();
     }
     catch(Exception e) {

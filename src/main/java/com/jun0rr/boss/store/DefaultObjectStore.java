@@ -24,6 +24,7 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import com.jun0rr.boss.Index;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -31,38 +32,30 @@ import com.jun0rr.boss.Index;
  */
 public class DefaultObjectStore implements ObjectStore {
   
-  public static final String KEY_BINTYPES = "bintypes";
-  
-  public static final String KEY_INDEXES = "indexes";
-  
-  
   private final Volume volume;
-  
-  private final Volume idxvol;
   
   private final BinContext context;
   
   private final Index index;
   
-  public DefaultObjectStore(Volume v, Volume x, BinContext c, Index i) {
+  public DefaultObjectStore(Volume v, BinContext c, Index i) {
     this.volume = Objects.requireNonNull(v);
-    this.idxvol = Objects.requireNonNull(x);
     this.context = Objects.requireNonNull(c);
     this.index = Objects.requireNonNull(i);
     load();
   }
 
-  public DefaultObjectStore(Volume v, Volume x, BinContext c) {
+  public DefaultObjectStore(Volume v,BinContext c) {
     this.volume = Objects.requireNonNull(v);
-    this.idxvol = Objects.requireNonNull(x);
     this.context = Objects.requireNonNull(c);
     this.index = new DefaultIndex();
     load();
   }
   
   private void load() {
-    if(idxvol.isLoaded()) {
-      Index i = context.read(idxvol.get(idxvol.blockSize()).buffer());
+    if(volume.isLoaded()) {
+      Block b = volume.metadata();
+      Index i = context.read(b.buffer());
       index.classIndex().putAll(i.classIndex());
       index.idIndex().putAll(i.idIndex());
       index.valueIndex().putAll(i.valueIndex());
@@ -82,6 +75,7 @@ public class DefaultObjectStore implements ObjectStore {
             }
             context.codecs().put(t, codec);
           });
+      volume.release(b);
     }
   }
   
@@ -128,24 +122,14 @@ public class DefaultObjectStore implements ObjectStore {
 
   @Override
   public <T> Stored<T> update(long id, T o) {
-    Integer idx = index.idIndex().get(id);
-    if(idx == null) {
-      throw new ObjectStoreException("ID not found (%d)", id);
-    }
-    volume.release(idx);
+    delete(id);
     return store(o);
   }
 
   @Override
   public <T> Stored<T> update(long id, UnaryOperator<T> update) {
-    Integer idx = index.idIndex().get(id);
-    if(idx == null) {
-      throw new ObjectStoreException("ID not found (%d)", id);
-    }
-    Block b = volume.get(idx);
-    T o = context.read(b.buffer().position(Long.BYTES));
-    volume.release(b.index());
-    return store(update.apply(o));
+    Stored<T> s = this.<T>delete(id).orElseThrow(()->new ObjectStoreException("ID not found (%d)", id));
+    return store(update.apply(s.object()));
   }
 
   @Override
@@ -184,7 +168,6 @@ public class DefaultObjectStore implements ObjectStore {
     return find(c, p).peek(s->index.classIndex().entrySet().stream()
         .filter(e->e.getKey().isTypeOf(c))
         .map(Entry::getValue)
-        .peek(l->System.out.printf("ObjectStore.delete(classIndex): %d->%s%n", s.index(), l))
         .findFirst()
         .ifPresent(l->l.remove(Integer.valueOf(s.index()))))
         .peek(s->index.idIndex().remove(s.id()))
@@ -193,19 +176,36 @@ public class DefaultObjectStore implements ObjectStore {
   }
   
   private <T> void removeValueIndex(Stored<T> s) {
-    index.valueIndex().entrySet().stream()
-        .filter(e->e.getKey().type().isTypeOf(s.object().getClass()))
-        .forEach(e->{
-          Optional<ExtractFunction> fn = context.mapper().extractStrategy().stream()
-              .flatMap(i->i.invokers(s.object().getClass()).stream())
-              .filter(f->f.name().equals(e.getKey().name()))
-              .findFirst();
-          if(fn.isPresent()) {
-            Object v = fn.get().extract(s.object());
-            System.out.printf("ObjectStore.removeValueIndex( %s ): value=%s -> %s%n", s, v, e.getValue());
-            e.getValue().stream().filter(i->i.value().equals(v)).forEach(e.getValue()::remove);
+    for(Entry<IndexType,List<IndexValue>> e : index.valueIndex().entrySet()) {
+      if(e.getKey().type().isTypeOf(s.object().getClass())) {
+        Optional<ExtractFunction> fn = context.mapper().extractStrategy().stream()
+            .flatMap(i->i.invokers(s.object().getClass()).stream())
+            .filter(f->f.name().equals(e.getKey().name()))
+            .findFirst();
+        if(fn.isPresent()) {
+          Object v = fn.get().extract(s.object());
+          List<IndexValue> is = e.getValue().stream().collect(Collectors.toList());
+          for(IndexValue iv : is) {
+            if(iv.value().equals(v)) {
+              e.getValue().remove(iv);
+            }
           }
-        });
+          //e.getValue().stream().filter(i->i.value().equals(v)).forEach(e.getValue()::remove);
+        }
+      }
+    }
+    //index.valueIndex().entrySet().stream()
+        //.filter(e->e.getKey().type().isTypeOf(s.object().getClass()))
+        //.forEach(e->{
+          //Optional<ExtractFunction> fn = context.mapper().extractStrategy().stream()
+              //.flatMap(i->i.invokers(s.object().getClass()).stream())
+              //.filter(f->f.name().equals(e.getKey().name()))
+              //.findFirst();
+          //if(fn.isPresent()) {
+            //Object v = fn.get().extract(s.object());
+            //e.getValue().stream().filter(i->i.value().equals(v)).forEach(e.getValue()::remove);
+          //}
+        //});
   }
 
   @Override
@@ -215,7 +215,7 @@ public class DefaultObjectStore implements ObjectStore {
     index.findByType(c)
         .mapToObj(volume::get)
         .map(b->Stored.of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())))
-        .map(s->new IndexValue(fn.apply(s.object()), s.index()))
+        .map(s->new IndexValue(fn.apply((T)s.object()), s.index()))
         .forEach(ls::add);
     index.valueIndex().put(t, ls);
   }
@@ -227,21 +227,19 @@ public class DefaultObjectStore implements ObjectStore {
   
   @Override
   public void close() {
-    Block b = idxvol.isLoaded() ? idxvol.get(idxvol.blockSize()) : idxvol.allocate();
+    Block b = volume.metadata();
     context.codecs().keySet().stream()
         .filter(t->!BinCodec.DEFAULT_BINTYPES.contains(t))
         .filter(t->!index.types().contains(t))
         .forEach(index.types()::add);
     context.write(b.buffer(), index);
     volume.close();
-    idxvol.close();
   }
 
   @Override
   public int hashCode() {
     int hash = 3;
     hash = 37 * hash + Objects.hashCode(this.volume);
-    hash = 37 * hash + Objects.hashCode(this.idxvol);
     hash = 37 * hash + Objects.hashCode(this.index);
     return hash;
   }
@@ -261,15 +259,12 @@ public class DefaultObjectStore implements ObjectStore {
     if (!Objects.equals(this.volume, other.volume)) {
       return false;
     }
-    if (!Objects.equals(this.idxvol, other.idxvol)) {
-      return false;
-    }
     return Objects.equals(this.index, other.index);
   }
 
   @Override
   public String toString() {
-    return "ObjectStore{" + "volume=" + volume + ", idxvol=" + idxvol + ", index=" + index + '}';
+    return "ObjectStore{" + "volume=" + volume + ", index=" + index + '}';
   }
 
 }

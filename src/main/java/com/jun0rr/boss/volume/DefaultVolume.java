@@ -40,6 +40,8 @@ public class DefaultVolume implements Volume {
   
   private final AtomicInteger woffset;
   
+  private final AtomicInteger metaidx;
+  
   private final boolean loaded;
   
   public DefaultVolume(String id, int blockSize, List<ByteBuffer> bufs, BufferAllocator ba) {
@@ -51,6 +53,7 @@ public class DefaultVolume implements Volume {
     this.loaded = !bufs.isEmpty();
     buffers.addAll(bufs);
     this.woffset = new AtomicInteger(blockSize);
+    this.metaidx = new AtomicInteger(-1);
     loadFreebufs();
   }
   
@@ -61,6 +64,7 @@ public class DefaultVolume implements Volume {
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = new CopyOnWriteArrayList<>();
     this.woffset = new AtomicInteger(blockSize);
+    this.metaidx = new AtomicInteger(-1);
     this.loaded = false;
   }
   
@@ -69,8 +73,10 @@ public class DefaultVolume implements Volume {
     Block b = get(0);
     if(METADATA_ID == b.buffer().get()) {
       woffset.set(b.buffer().getInt());
+      metaidx.set(b.buffer().getInt());
       int size = b.buffer().getShort();
       IntStream.range(0, size).forEach(i->freebufs.add(getOffsetBuffer(b.buffer().getInt())));
+      freebufs.forEach(System.out::println);
     }
   }
   
@@ -92,6 +98,7 @@ public class DefaultVolume implements Volume {
     if(offset < 0) return null;
     int idx = offset / malloc.bufferSize();
     int pos = offset - idx * malloc.bufferSize();
+    //System.out.printf("getOffsetBuffer( %d ): idx=%d, pos=%d, buffers=%s%n", offset, idx, pos, buffers);
     ByteBuffer bb = buffers.get(idx).clear().position(pos).limit(pos + blockSize);
     return new OffsetBuffer(offset, bb.slice());
   }
@@ -158,6 +165,7 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Volume release(int offset) {
+    metaidx.compareAndSet(offset, -1);
     int nos = offset;
     do {
       OffsetBuffer buf = getOffsetBuffer(nos);
@@ -190,15 +198,30 @@ public class DefaultVolume implements Volume {
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
     return new DefaultBlock(this, buffer, buf.offset());
   }
+  
+  @Override
+  public Block metadata() {
+    if(metaidx.get() < 0) {
+      Block b = allocate();
+      metaidx.set(b.index());
+      return b;
+    }
+    else {
+      return get(metaidx.get());
+    }
+  }
 
   @Override
   public void close() {
     int[] offsets = new int[freebufs.size()];
     AtomicInteger i = new AtomicInteger(0);
     freebufs.forEach(o->offsets[i.getAndIncrement()] = o.offset());
-      Block b = get(0);
-    release(b);
-    b.buffer().put(METADATA_ID).putInt(woffset.get()).putShort((short)offsets.length);
+    release(0);
+    Block b = get(0);
+    b.buffer().put(METADATA_ID)
+        .putInt(woffset.get())
+        .putInt(metaidx.get())
+        .putShort((short)offsets.length);
     IntStream.of(offsets).forEach(b.buffer()::putInt);
     malloc.close();
   }
