@@ -5,7 +5,7 @@
 package com.jun0rr.boss.test;
 
 import com.jun0rr.boss.ObjectStore;
-import com.jun0rr.boss.store.Stored;
+import com.jun0rr.boss.Stored;
 import java.time.LocalDate;
 import java.util.LinkedList;
 import java.util.List;

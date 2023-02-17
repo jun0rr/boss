@@ -4,6 +4,7 @@
  */
 package com.jun0rr.boss.store;
 
+import com.jun0rr.boss.Stored;
 import com.jun0rr.binj.BinCodec;
 import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.ContextEvent;

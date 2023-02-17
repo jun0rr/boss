@@ -4,7 +4,6 @@
  */
 package com.jun0rr.boss;
 
-import com.jun0rr.boss.store.Stored;
 import com.jun0rr.boss.store.ObjectStoreBuilder;
 import java.io.Closeable;
 import java.util.Optional;

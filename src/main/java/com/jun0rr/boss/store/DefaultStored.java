@@ -4,6 +4,7 @@
  */
 package com.jun0rr.boss.store;
 
+import com.jun0rr.boss.Stored;
 import java.util.Objects;
 
 /**
