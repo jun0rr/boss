@@ -190,22 +190,9 @@ public class DefaultObjectStore implements ObjectStore {
               e.getValue().remove(iv);
             }
           }
-          //e.getValue().stream().filter(i->i.value().equals(v)).forEach(e.getValue()::remove);
         }
       }
     }
-    //index.valueIndex().entrySet().stream()
-        //.filter(e->e.getKey().type().isTypeOf(s.object().getClass()))
-        //.forEach(e->{
-          //Optional<ExtractFunction> fn = context.mapper().extractStrategy().stream()
-              //.flatMap(i->i.invokers(s.object().getClass()).stream())
-              //.filter(f->f.name().equals(e.getKey().name()))
-              //.findFirst();
-          //if(fn.isPresent()) {
-            //Object v = fn.get().extract(s.object());
-            //e.getValue().stream().filter(i->i.value().equals(v)).forEach(e.getValue()::remove);
-          //}
-        //});
   }
 
   @Override
