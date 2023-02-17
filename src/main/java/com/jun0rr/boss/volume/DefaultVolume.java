@@ -98,7 +98,6 @@ public class DefaultVolume implements Volume {
     if(offset < 0) return null;
     int idx = offset / malloc.bufferSize();
     int pos = offset - idx * malloc.bufferSize();
-    //System.out.printf("getOffsetBuffer( %d ): idx=%d, pos=%d, buffers=%s%n", offset, idx, pos, buffers);
     ByteBuffer bb = buffers.get(idx).clear().position(pos).limit(pos + blockSize);
     return new OffsetBuffer(offset, bb.slice());
   }
@@ -120,12 +119,10 @@ public class DefaultVolume implements Volume {
   
   private OffsetBuffer last(OffsetBuffer buf) {
     OffsetBuffer last = buf;
-    //System.out.printf("Volume.last[1]( %s ): last=%s%n", buf, last);
     int nos = last.buffer().position(0).getInt();
     while(nos >= 0 && nos != buf.offset()) {
       last = getOffsetBuffer(nos);
       nos = last.buffer().position(0).getInt();
-      //System.out.printf("Volume.last[2]( %s ): last=%s%n", buf, last);
     }
     return last;
   }
@@ -133,7 +130,6 @@ public class DefaultVolume implements Volume {
   private ByteBuffer allocateSlice(OffsetBuffer buf) {
     OffsetBuffer last = last(buf);
     OffsetBuffer ob = allocateFreeBuffer();
-    //System.out.printf("Volume.allocateSlice[1]( %s ): last=%s, freebuf=%s%n", buf, last, ob);
     last.buffer().position(0).putInt(ob.offset());
     return ob.buffer().position(Integer.BYTES).slice();
   }
@@ -193,7 +189,6 @@ public class DefaultVolume implements Volume {
       bufs.add(last.buffer().position(Integer.BYTES).slice());
       int next = last.buffer().position(0).getInt();
       last = next != offset && next != last.offset() ? getOffsetBuffer(next) : null;
-      //System.out.printf("Volume.get( %d ): next=%s, last=%s%n", offset, next, last);
     }
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
     return new DefaultBlock(this, buffer, buf.offset());

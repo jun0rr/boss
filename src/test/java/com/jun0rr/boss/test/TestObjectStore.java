@@ -34,7 +34,6 @@ public class TestObjectStore {
           "Hello" + i, "World" + i, LocalDate.of(1980 + i, i + 1, i + 10), 
           new Address("Street" + i, "City" + i, i + 100), new long[]{299L + i})
       ).forEach(ps::add);
-      System.out.println(ps);
       if(!store.isLoaded()) {
         ps.forEach(store::store);
       }
@@ -54,7 +53,8 @@ public class TestObjectStore {
           .findFirst()
           .ifPresent(s->store.delete(s.id()));
       s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
-      System.out.println(store.<Person>update(s2.id(), p->new Person(p.name(), "XXXX", p.birth(), p.address(), p.ids())));
+      s2 = store.<Person>update(s2.id(), p->new Person(p.name(), "XXXX", p.birth(), p.address(), p.ids()));
+      System.out.println(store.get(s2.id()));
       store.close();
     }
     catch(Exception e) {
