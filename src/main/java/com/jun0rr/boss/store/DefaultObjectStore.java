@@ -100,11 +100,18 @@ public class DefaultObjectStore implements ObjectStore {
     Optional<Entry<IndexType,List<IndexValue>>> entry = index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
         .findAny();
+    System.out.println("ObjectStore.store(): valueIndex=" + entry);
     if(entry.isPresent()) {
-      Object val = context.mapper().extractStrategy().stream()
-          .flatMap(s->s.invokers(o.getClass()).stream())
-          .filter(f->f.name().equals(entry.get().getKey().name()))
-          .findAny().get().extract(o);
+      List<String> names = List.of(entry.get().getKey().name().split("."));
+      Object val = o;
+      for(String name : names) {
+        final Object ob = val;
+        val = context.mapper().extractStrategy().stream()
+          .flatMap(s->s.invokers(ob.getClass()).stream())
+          .filter(f->f.name().equals(name))
+          .findFirst().get().extract(val);
+        System.out.println("ObjectStore.store(): val=" + val);
+      }
       entry.get().getValue().add(new IndexValue(val, b.index()));
     }
     return Stored.of(evt.checksum(), b.index(), o);

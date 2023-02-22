@@ -42,7 +42,9 @@ public class TestObjectStore {
           .ifPresent(System.out::println);
       ps.remove(5);
       ps.remove(5);
+      System.out.println("find Hello2");
       Stored<Person> s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
+      System.out.println(s2);
       System.out.println(store.<Person>update(s2.id(), p->new Person(p.name(), "World2", p.birth(), p.address(), p.ids())));
       for(Person p : ps) {
         assertEquals(p, store.find(Person.class, q->q.name().equals(p.name())).findFirst().get().object());
@@ -55,6 +57,11 @@ public class TestObjectStore {
       s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
       s2 = store.<Person>update(s2.id(), p->new Person(p.name(), "XXXX", p.birth(), p.address(), p.ids()));
       System.out.println(store.get(s2.id()));
+      
+      store.createIndex(Person.class, "address.number", p->p.address().number());
+      System.out.println(store.find(Person.class, "address.number", 103).findAny());
+      
+      
       store.close();
     }
     catch(Exception e) {
