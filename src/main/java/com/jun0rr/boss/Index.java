@@ -29,9 +29,6 @@ public interface Index {
   @Binary
   public Map<IndexType,List<IndexValue>> valueIndex();
   
-  @Binary
-  public List<BinType> types();
-  
   public default <T> IntStream findByValue(Class c, String name, T t) {
     return valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().isTypeOf(c))

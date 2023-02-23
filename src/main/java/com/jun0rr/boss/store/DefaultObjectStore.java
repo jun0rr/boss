@@ -7,6 +7,7 @@ package com.jun0rr.boss.store;
 import com.jun0rr.boss.Stored;
 import com.jun0rr.binj.BinCodec;
 import com.jun0rr.binj.BinContext;
+import com.jun0rr.binj.BinType;
 import com.jun0rr.binj.ContextEvent;
 import com.jun0rr.binj.codec.ArrayCodec;
 import com.jun0rr.binj.codec.EnumCodec;
@@ -25,6 +26,7 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import com.jun0rr.boss.Index;
+import java.util.LinkedList;
 import java.util.stream.Collectors;
 
 /**
@@ -56,12 +58,9 @@ public class DefaultObjectStore implements ObjectStore {
   private void load() {
     if(volume.isLoaded()) {
       Block b = volume.metadata();
-      Index i = context.read(b.buffer());
-      index.classIndex().putAll(i.classIndex());
-      index.idIndex().putAll(i.idIndex());
-      index.valueIndex().putAll(i.valueIndex());
-      index.types().addAll(i.types());
-      index.types().stream()
+      List<BinType> types = context.read(b.buffer());
+      //System.out.println("ObjectStore.load(): types=" + types);
+      types.stream()
           .filter(t->!context.codecs().containsKey(t))
           .forEach(t->{
             BinCodec codec;
@@ -76,6 +75,10 @@ public class DefaultObjectStore implements ObjectStore {
             }
             context.codecs().put(t, codec);
           });
+      Index i = context.read(b.buffer());
+      index.classIndex().putAll(i.classIndex());
+      index.idIndex().putAll(i.idIndex());
+      index.valueIndex().putAll(i.valueIndex());
       volume.release(b);
     }
   }
@@ -97,24 +100,24 @@ public class DefaultObjectStore implements ObjectStore {
       index.classIndex().put(evt.codec().bintype(), is);
     }
     is.add(b.index());
-    Optional<Entry<IndexType,List<IndexValue>>> entry = index.valueIndex().entrySet().stream()
+    index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
-        .findAny();
-    System.out.println("ObjectStore.store(): valueIndex=" + entry);
-    if(entry.isPresent()) {
-      List<String> names = List.of(entry.get().getKey().name().split("."));
-      Object val = o;
-      for(String name : names) {
-        final Object ob = val;
-        val = context.mapper().extractStrategy().stream()
-          .flatMap(s->s.invokers(ob.getClass()).stream())
-          .filter(f->f.name().equals(name))
-          .findFirst().get().extract(val);
-        System.out.println("ObjectStore.store(): val=" + val);
-      }
-      entry.get().getValue().add(new IndexValue(val, b.index()));
-    }
+        .forEach(e->updateValueIndex(o, b, e));
     return Stored.of(evt.checksum(), b.index(), o);
+  }
+  
+  private void updateValueIndex(Object val, Block b, Entry<IndexType, List<IndexValue>> entry) {
+    List<String> names = List.of(entry.getKey().name().split("\\."));
+    //System.out.printf("ObjectStore.updateValueIndex(%s): names=%s%n", entry.getKey().name(), names);
+    for(String name : names) {
+      final Object ob = val;
+      val = context.mapper().extractStrategy().stream()
+        .flatMap(s->s.invokers(ob.getClass()).stream())
+        .filter(f->f.name().equals(name))
+        .findFirst().get().extract(val);
+      //System.out.println("ObjectStore.updateValueIndex(): val=" + val);
+    }
+    entry.getValue().add(new IndexValue(val, b.index()));
   }
   
   @Override
@@ -130,7 +133,7 @@ public class DefaultObjectStore implements ObjectStore {
 
   @Override
   public <T> Stored<T> update(long id, T o) {
-    delete(id);
+    delete(id).orElseThrow(()->new ObjectStoreException("ID not found (%d)", id));
     return store(o);
   }
 
@@ -186,19 +189,22 @@ public class DefaultObjectStore implements ObjectStore {
   private <T> void removeValueIndex(Stored<T> s) {
     for(Entry<IndexType,List<IndexValue>> e : index.valueIndex().entrySet()) {
       if(e.getKey().type().isTypeOf(s.object().getClass())) {
-        Optional<ExtractFunction> fn = context.mapper().extractStrategy().stream()
-            .flatMap(i->i.invokers(s.object().getClass()).stream())
-            .filter(f->f.name().equals(e.getKey().name()))
-            .findFirst();
-        if(fn.isPresent()) {
-          Object v = fn.get().extract(s.object());
-          List<IndexValue> is = e.getValue().stream().collect(Collectors.toList());
-          for(IndexValue iv : is) {
-            if(iv.value().equals(v)) {
-              e.getValue().remove(iv);
-            }
-          }
+        List<String> names = List.of(e.getKey().name().split("\\."));
+        //System.out.printf("ObjectStore.removeValueIndex(%s): names=%s%n", e.getKey().name(), names);
+        Object val = s.object();
+        for(String name : names) {
+          final Object ob = val;
+          val = context.mapper().extractStrategy().stream()
+            .flatMap(t->t.invokers(ob.getClass()).stream())
+            .filter(f->f.name().equals(name))
+            .findFirst().get().extract(val);
+          //System.out.println("ObjectStore.removeValueIndex(): val=" + val);
         }
+        final Object vl = val;
+        e.getValue().stream()
+            .filter(v->v.value().equals(vl))
+            .collect(Collectors.toList())
+            .forEach(e.getValue()::remove);
       }
     }
   }
@@ -223,10 +229,11 @@ public class DefaultObjectStore implements ObjectStore {
   @Override
   public void close() {
     Block b = volume.metadata();
+    List<BinType> types = new LinkedList<>();
     context.codecs().keySet().stream()
         .filter(t->!BinCodec.DEFAULT_BINTYPES.contains(t))
-        .filter(t->!index.types().contains(t))
-        .forEach(index.types()::add);
+        .forEach(types::add);
+    context.write(b.buffer(), types);
     context.write(b.buffer(), index);
     volume.close();
   }

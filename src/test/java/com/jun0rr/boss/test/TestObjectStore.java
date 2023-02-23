@@ -39,28 +39,38 @@ public class TestObjectStore {
       }
       store.delete(Person.class, p->p.name().equals("Hello5"))
           .findFirst()
-          .ifPresent(System.out::println);
+          .ifPresent(p->System.out.println("deleted! " + p));
       ps.remove(5);
       ps.remove(5);
       System.out.println("find Hello2");
       Stored<Person> s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
       System.out.println(s2);
-      System.out.println(store.<Person>update(s2.id(), p->new Person(p.name(), "World2", p.birth(), p.address(), p.ids())));
+      System.out.println("updated! " + store.<Person>update(s2.id(), p->new Person(p.name(), "World2", p.birth(), p.address(), p.ids())));
       for(Person p : ps) {
         assertEquals(p, store.find(Person.class, q->q.name().equals(p.name())).findFirst().get().object());
       }
+      System.out.println("create index birth");
       store.createIndex(Person.class, "birth", Person::birth);
       store.find(Person.class, "birth", LocalDate.of(1986, 7, 16))
-          .peek(s->System.out.println(s))
           .findFirst()
-          .ifPresent(s->store.delete(s.id()));
+          .ifPresent(s->System.out.println("deleted! " + store.delete(s.id())));
       s2 = store.find(Person.class, p->p.name().equals("Hello2")).findFirst().get();
       s2 = store.<Person>update(s2.id(), p->new Person(p.name(), "XXXX", p.birth(), p.address(), p.ids()));
-      System.out.println(store.get(s2.id()));
+      System.out.println("updated! " + store.get(s2.id()));
       
+      System.out.println("create index address.number");
       store.createIndex(Person.class, "address.number", p->p.address().number());
-      System.out.println(store.find(Person.class, "address.number", 103).findAny());
+      System.out.println("find address.number=103! " + store.find(Person.class, "address.number", 103).findAny());
       
+      Optional<Stored<Person>> opt = store.find(Person.class, "address.number", 120).findFirst();
+      System.out.println("find address.number=120! " + opt);
+      if(opt.isEmpty()) {
+        s2 = store.store(new Person("Hello10", "World10", LocalDate.of(1990, 11, 20), new Address("Street10", "City10", 120), new long[]{319L}));
+        System.out.println("stored! " + s2);
+      }
+      else {
+        System.out.println(opt.get());
+      }
       
       store.close();
     }

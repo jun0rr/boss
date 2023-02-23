@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import com.jun0rr.boss.Index;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  *
@@ -24,17 +23,13 @@ public class DefaultIndex implements Index {
   
   private final Map<IndexType, List<IndexValue>> valueIndex;
   
-  private final List<BinType> types;
-  
-  public DefaultIndex(List<BinType> types, Map<BinType, List<Integer>> classIndex, Map<Long, Integer> idIndex, Map<IndexType, List<IndexValue>> valueIndex) {
-    this.types = Objects.requireNonNull(types);
+  public DefaultIndex(Map<BinType, List<Integer>> classIndex, Map<Long, Integer> idIndex, Map<IndexType, List<IndexValue>> valueIndex) {
     this.classIndex = Objects.requireNonNull(classIndex);
     this.idIndex = Objects.requireNonNull(idIndex);
     this.valueIndex = Objects.requireNonNull(valueIndex);
   }
   
   public DefaultIndex() {
-    this.types = new CopyOnWriteArrayList<>();
     this.classIndex = new ConcurrentHashMap<>();
     this.idIndex = new ConcurrentHashMap<>();
     this.valueIndex = new ConcurrentHashMap<>();
@@ -56,17 +51,11 @@ public class DefaultIndex implements Index {
   }
   
   @Override
-  public List<BinType> types() {
-    return types;
-  }
-
-  @Override
   public int hashCode() {
     int hash = 5;
     hash = 67 * hash + Objects.hashCode(this.classIndex);
     hash = 67 * hash + Objects.hashCode(this.idIndex);
     hash = 67 * hash + Objects.hashCode(this.valueIndex);
-    hash = 67 * hash + Objects.hashCode(this.types);
     return hash;
   }
 
@@ -88,15 +77,12 @@ public class DefaultIndex implements Index {
     if (!Objects.equals(this.idIndex, other.idIndex)) {
       return false;
     }
-    if (!Objects.equals(this.valueIndex, other.valueIndex)) {
-      return false;
-    }
-    return Objects.equals(this.types, other.types);
+    return Objects.equals(this.valueIndex, other.valueIndex);
   }
 
   @Override
   public String toString() {
-    return "Index{" + "classIndex=" + classIndex + ", idIndex=" + idIndex + ", valueIndex=" + valueIndex + ", types=" + types + '}';
+    return "Index{" + "classIndex=" + classIndex + ", idIndex=" + idIndex + ", valueIndex=" + valueIndex + '}';
   }
 
 }
