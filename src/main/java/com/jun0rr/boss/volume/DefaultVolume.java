@@ -112,6 +112,7 @@ public class DefaultVolume implements Volume {
       buf = getOffsetBuffer(woffset.getAndAdd(blockSize));
     }
     buf.buffer().clear().putInt(-1).clear();
+    System.out.printf("Volume.allocateFreeBuffer(): offset=%s, thread=%s%n", buf, Thread.currentThread());
     return buf;
   }
   
@@ -149,7 +150,9 @@ public class DefaultVolume implements Volume {
     List<ByteBuffer> bufs = new ArrayList<>();
     bufs.add(buf.buffer().position(Integer.BYTES).slice());
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
-    return new DefaultBlock(this, buffer, buf.offset());
+    Block b = new DefaultBlock(this, buffer, buf.offset());
+    System.out.printf("Volume.allocate( %d ): block=%s, thread=%s%n", size, b, Thread.currentThread());
+    return b;
   }
 
   @Override
