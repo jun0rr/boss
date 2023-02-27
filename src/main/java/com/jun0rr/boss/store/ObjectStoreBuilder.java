@@ -6,6 +6,7 @@ package com.jun0rr.boss.store;
 
 import com.jun0rr.binj.*;
 import com.jun0rr.binj.buffer.BufferAllocator;
+import com.jun0rr.binj.buffer.MappedBufferAllocator;
 import com.jun0rr.binj.buffer.PathSupplier;
 import com.jun0rr.binj.codec.ObjectCodec;
 import com.jun0rr.binj.mapping.ConstructFunction;
@@ -16,7 +17,7 @@ import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.volume.DefaultVolume;
-import java.nio.channels.FileChannel;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -233,7 +234,7 @@ public class ObjectStoreBuilder {
   }
   
   private Volume buildVolume() {
-    List<FileChannel> fs = Collections.EMPTY_LIST;
+    List<ByteBuffer> bufs = Collections.EMPTY_LIST;
     BufferAllocator alloc = BufferAllocator.heapAllocator(bufferSize);
     switch(this.allocType) {
       case DIRECT:
@@ -243,31 +244,14 @@ public class ObjectStoreBuilder {
         if(this.storePath == null) {
           throw new IllegalStateException("Store path is not defined");
         }
-        PathSupplier ps = PathSupplier.of(storePath, volid, "odb");
-        fs = ps.existing()
-        .map(p->.run(()->FileChannel.open(p, openOptions())))
-            .collect(Collectors.toList());
-        alloc = BufferAllocator.mappedFileAllocator(ps, bufferSize, false);
+        MappedBufferAllocator ma = new MappedBufferAllocator(
+            PathSupplier.of(storePath, volid, "odb"), bufferSize, false
+        );
+        alloc = ma;
+        bufs = ma.readBuffers();
         break;
     }
-    return new DefaultVolume(volid, blockSize, vname.existing().collect(Collectors.toList()), vname);
+    return new DefaultVolume(volid, blockSize, bufs, alloc);
   }
   
-  private BufferAllocator buildAllocator() {
-    BufferAllocator alloc = BufferAllocator.heapAllocator(bufferSize);
-    switch(this.allocType) {
-      case DIRECT:
-        alloc = BufferAllocator.directAllocator(bufferSize);
-        break;
-      case MAPPED:
-        if(this.storePath == null) {
-          throw new IllegalStateException("Store path is not defined");
-        }
-        PathSupplier ps = PathSupplier.of(storePath, volid, "odb");
-        alloc = BufferAllocator.mappedFileAllocator(ps, bufferSize, false);
-        break;
-    }
-    return alloc;
-  }
-    
 }

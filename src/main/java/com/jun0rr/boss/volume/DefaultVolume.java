@@ -75,7 +75,6 @@ public class DefaultVolume implements Volume {
       metaidx.set(b.buffer().getInt());
       int size = b.buffer().getShort();
       IntStream.range(0, size).forEach(i->freebufs.add(getOffsetBuffer(b.buffer().getInt())));
-      freebufs.forEach(System.out::println);
     }
   }
   
