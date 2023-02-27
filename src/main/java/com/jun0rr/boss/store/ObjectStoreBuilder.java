@@ -4,10 +4,9 @@
  */
 package com.jun0rr.boss.store;
 
-import com.jun0rr.binj.BinContext;
-import com.jun0rr.binj.BinType;
+import com.jun0rr.binj.*;
 import com.jun0rr.binj.buffer.BufferAllocator;
-import com.jun0rr.binj.buffer.FileNameSupplier;
+import com.jun0rr.binj.buffer.PathSupplier;
 import com.jun0rr.binj.codec.ObjectCodec;
 import com.jun0rr.binj.mapping.ConstructFunction;
 import com.jun0rr.binj.mapping.ExtractFunction;
@@ -15,23 +14,15 @@ import com.jun0rr.binj.mapping.InjectFunction;
 import com.jun0rr.binj.mapping.InvokeStrategy;
 import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
 import com.jun0rr.boss.ObjectStore;
-import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
-import com.jun0rr.boss.Volume;
-import com.jun0rr.boss.store.DefaultIndex;
-import com.jun0rr.boss.store.DefaultObjectStore;
-import com.jun0rr.boss.store.IndexType;
-import com.jun0rr.boss.store.IndexValue;
 import com.jun0rr.boss.volume.DefaultVolume;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -242,25 +233,24 @@ public class ObjectStoreBuilder {
   }
   
   private Volume buildVolume() {
-    BufferAllocator valloc = buildAllocator();
-    try {
-      Supplier<String> vname = new FileNameSupplier(volid, "odb");
-      List<ByteBuffer> vbufs = new LinkedList<>();
-      Path path = storePath.resolve(vname.get());
-      while(Files.exists(path)) {
-        long size = Files.size(path);
-        long len = 0;
-        while(len < size) {
-          vbufs.add(valloc.alloc());
-          len += bufferSize;
+    List<FileChannel> fs = Collections.EMPTY_LIST;
+    BufferAllocator alloc = BufferAllocator.heapAllocator(bufferSize);
+    switch(this.allocType) {
+      case DIRECT:
+        alloc = BufferAllocator.directAllocator(bufferSize);
+        break;
+      case MAPPED:
+        if(this.storePath == null) {
+          throw new IllegalStateException("Store path is not defined");
         }
-        path = storePath.resolve(vname.get());
-      }
-      return new DefaultVolume(volid, blockSize, vbufs, valloc);
+        PathSupplier ps = PathSupplier.of(storePath, volid, "odb");
+        fs = ps.existing()
+        .map(p->.run(()->FileChannel.open(p, openOptions())))
+            .collect(Collectors.toList());
+        alloc = BufferAllocator.mappedFileAllocator(ps, bufferSize, false);
+        break;
     }
-    catch(IOException e) {
-      throw new ObjectStoreException(e);
-    }
+    return new DefaultVolume(volid, blockSize, vname.existing().collect(Collectors.toList()), vname);
   }
   
   private BufferAllocator buildAllocator() {
@@ -273,7 +263,8 @@ public class ObjectStoreBuilder {
         if(this.storePath == null) {
           throw new IllegalStateException("Store path is not defined");
         }
-        alloc = BufferAllocator.mappedFileAllocator(storePath, new FileNameSupplier(volid, "odb"), bufferSize, false);
+        PathSupplier ps = PathSupplier.of(storePath, volid, "odb");
+        alloc = BufferAllocator.mappedFileAllocator(ps, bufferSize, false);
         break;
     }
     return alloc;

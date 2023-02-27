@@ -49,9 +49,8 @@ public class DefaultVolume implements Volume {
     this.malloc = Objects.requireNonNull(ba);
     this.blockSize = blockSize;
     this.freebufs = new ConcurrentLinkedQueue<>();
-    this.buffers = new CopyOnWriteArrayList<>();
-    this.loaded = !bufs.isEmpty();
-    buffers.addAll(bufs);
+    this.buffers = new CopyOnWriteArrayList<>(bufs);
+    this.loaded = !buffers.isEmpty();
     this.woffset = new AtomicInteger(blockSize);
     this.metaidx = new AtomicInteger(-1);
     loadFreebufs();

@@ -9,7 +9,7 @@ import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.volume.DefaultVolume;
 import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.buffer.BufferAllocator;
-import com.jun0rr.binj.buffer.FileNameSupplier;
+import com.jun0rr.binj.buffer.DefaultPathSupplier;
 import com.jun0rr.boss.store.ObjectStoreException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,8 +53,8 @@ public class TestVolume {
   public void testMapped() throws Exception {
     try {
       Path root = Paths.get("./");
-    BufferAllocator alloc = BufferAllocator.mappedFileAllocator(root, new FileNameSupplier("testMapped", "db"), 128, false);
-    Supplier<String> name = new FileNameSupplier("testMapped", "odb");
+    BufferAllocator alloc = BufferAllocator.mappedFileAllocator(root, new DefaultPathSupplier("testMapped", "db"), 128, false);
+    Supplier<String> name = new DefaultPathSupplier("testMapped", "odb");
     List<ByteBuffer> bufs = new LinkedList<>();
     Path path = root.resolve(name.get());
     while(Files.exists(path)) {
