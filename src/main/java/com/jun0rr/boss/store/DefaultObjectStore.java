@@ -12,7 +12,6 @@ import com.jun0rr.binj.ContextEvent;
 import com.jun0rr.binj.codec.ArrayCodec;
 import com.jun0rr.binj.codec.EnumCodec;
 import com.jun0rr.binj.codec.ObjectCodec;
-import com.jun0rr.binj.mapping.ExtractFunction;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
@@ -93,6 +92,11 @@ public class DefaultObjectStore implements ObjectStore {
     Block b = volume.allocate();
     ContextEvent evt = context.write(b.buffer().position(Long.BYTES), o);
     b.buffer().position(0).putLong(evt.checksum());
+    storeIndex(o, b, evt);
+    return Stored.of(evt.checksum(), b.index(), o);
+  }
+  
+  private synchronized void storeIndex(Object o, Block b, ContextEvent evt) {
     index.idIndex().put(evt.checksum(), b.index());
     List<Integer> is = index.classIndex().get(evt.codec().bintype());
     if(is == null) {
@@ -103,7 +107,6 @@ public class DefaultObjectStore implements ObjectStore {
     index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
         .forEach(e->updateValueIndex(o, b, e));
-    return Stored.of(evt.checksum(), b.index(), o);
   }
   
   private void updateValueIndex(Object val, Block b, Entry<IndexType, List<IndexValue>> entry) {

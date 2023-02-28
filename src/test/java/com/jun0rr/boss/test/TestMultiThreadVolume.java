@@ -10,9 +10,10 @@ import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.volume.DefaultVolume;
 import java.nio.file.Paths;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,33 +31,53 @@ public class TestMultiThreadVolume {
     try {
       MappedBufferAllocator ma = new MappedBufferAllocator(PathSupplier.of(Paths.get("./"), "TestMultiThreadVolume", "bin"), 64);
       Volume vol = new DefaultVolume("TestMultiThreadVolume", 32, ma.readBuffers(), ma);
-      List<Integer> offsets = new LinkedList<>();
-      List<Thread> ls = IntStream.range(0, 10)
-          .mapToObj(i->VolumeTask.task(vol, v->{
-            Block b = v.allocate();
-            offsets.add(b.index());
-            IntStream.range(10, 30).forEach(b.buffer()::putInt);
-            b.buffer().flip();
-            System.out.printf("put(%d): %s, %s%n", b.index(), IntStream.range(10, 30).mapToObj(j->b.buffer().getInt()).collect(Collectors.toList()), b);
-          }))
+      System.out.println(vol);
+      Queue<Integer> offsets = new ConcurrentLinkedQueue<>();
+      List<Thread> ls = IntStream.range(0, 20)
+          .mapToObj(i->VolumeTask.task(vol, write(offsets)))
+          .map(VolumeTask::start)
+          .collect(Collectors.toList());
+      List<Thread> ls2 = offsets.stream()
+          .peek(i->offsets.remove(i))
+          .map(i->VolumeTask.task(vol, read(i)))
           .map(VolumeTask::start)
           .collect(Collectors.toList());
       ls.forEach(this::join);
-      ls = offsets.stream()
-          .map(i->VolumeTask.task(vol, v->{
-            Block b = v.get(i);
-            //IntStream.range(10, 30).forEach(j->Assertions.assertEquals(j, b.buffer().getInt()));
-            System.out.printf("get(%d, %s): %s%n", b.index(), Thread.currentThread(), b);
-            System.out.printf("%s%n", IntStream.range(10, 30).mapToObj(j->b.buffer().getInt()).collect(Collectors.toList()));
-          }))
-          .map(VolumeTask::start)
-          .collect(Collectors.toList());
+      while(!offsets.isEmpty()) {
+        ls = offsets.stream()
+            .peek(i->offsets.remove(i))
+            .map(i->VolumeTask.task(vol, read(i)))
+            .map(VolumeTask::start)
+            .collect(Collectors.toList());
+      }
       ls.forEach(this::join);
+      ls2.forEach(this::join);
+      System.out.println(offsets);
       vol.close();
     }
     catch(Exception e) {
       e.printStackTrace();
     }
+  }
+  
+  private Consumer<Volume> write(Queue<Integer> offsets) {
+    return v->{
+      Block b = v.allocate();
+      IntStream.range(10, 30).forEach(b.buffer()::putInt);
+      offsets.offer(b.index());
+      b.buffer().flip();
+      //System.out.printf("put(%d): %s, %s%n", b.index(), IntStream.range(10, 30).mapToObj(j->b.buffer().getInt()).collect(Collectors.toList()), b);
+    };
+  }
+  
+  private Consumer<Volume> read(int idx) {
+    return v->{
+      Block b = v.get(idx);
+      System.out.printf("get(%d, %s): %s%n", b.index(), Thread.currentThread(), b);
+      IntStream.range(10, 30).forEach(j->Assertions.assertEquals(j, b.buffer().getInt()));
+      v.release(b);
+      //System.out.printf("%s%n", IntStream.range(10, 30).mapToObj(j->b.buffer().getInt()).collect(Collectors.toList()));
+    };
   }
   
   private void join(Thread t) {

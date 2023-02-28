@@ -96,11 +96,12 @@ public class DefaultVolume implements Volume {
     if(offset < 0) return null;
     int idx = offset / malloc.bufferSize();
     int pos = offset - idx * malloc.bufferSize();
+    //System.out.printf("Volume.getOffsetBuffer(%d): idx=%d, pos=%s, buffers.size=%s, thread=%s%n", offset, idx, pos, buffers.size(), Thread.currentThread());
     ByteBuffer bb = buffers.get(idx).clear().position(pos).limit(pos + blockSize);
     return new OffsetBuffer(offset, bb.slice());
   }
   
-  private OffsetBuffer allocateFreeBuffer() {
+  private synchronized OffsetBuffer allocateFreeBuffer() {
     OffsetBuffer buf = null;
     if(!freebufs.isEmpty()) {
       buf = freebufs.poll();
@@ -111,8 +112,8 @@ public class DefaultVolume implements Volume {
       }
       buf = getOffsetBuffer(woffset.getAndAdd(blockSize));
     }
+    //System.out.printf("Volume.allocateFreeBuffer(): offset=%s, thread=%s, buf=%s%n", buf, Thread.currentThread(), buf.buffer());
     buf.buffer().clear().putInt(-1).clear();
-    System.out.printf("Volume.allocateFreeBuffer(): offset=%s, thread=%s%n", buf, Thread.currentThread());
     return buf;
   }
   
@@ -151,7 +152,7 @@ public class DefaultVolume implements Volume {
     bufs.add(buf.buffer().position(Integer.BYTES).slice());
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
     Block b = new DefaultBlock(this, buffer, buf.offset());
-    System.out.printf("Volume.allocate( %d ): block=%s, thread=%s%n", size, b, Thread.currentThread());
+    //System.out.printf("Volume.allocate( %d ): block=%s, thread=%s%n", size, b, Thread.currentThread());
     return b;
   }
 
@@ -166,12 +167,12 @@ public class DefaultVolume implements Volume {
     int nos = offset;
     do {
       OffsetBuffer buf = getOffsetBuffer(nos);
+      nos = buf.buffer().position(0).getInt();
+      buf.buffer().position(0).putInt(-1);
       if(buf.offset() > 0 && !freebufs.contains(buf)) {
         freebufs.add(buf);
       }
-      nos = buf.buffer().position(0).getInt();
-      buf.buffer().position(0).putInt(-1);
-    } while(nos >= 0 && nos != offset);
+    } while(nos > 0 && nos != offset);
     return this;
   }
 
@@ -218,7 +219,9 @@ public class DefaultVolume implements Volume {
         .putInt(woffset.get())
         .putInt(metaidx.get())
         .putShort((short)offsets.length);
-    IntStream.of(offsets).forEach(b.buffer()::putInt);
+    IntStream.of(offsets)
+        //.peek(j->System.out.printf("Volume.close(): freoffset=%d%n", j))
+        .forEach(b.buffer()::putInt);
     malloc.close();
   }
   

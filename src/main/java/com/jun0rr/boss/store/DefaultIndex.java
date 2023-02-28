@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import com.jun0rr.boss.Index;
+import java.util.Collections;
 
 /**
  *
@@ -24,15 +25,13 @@ public class DefaultIndex implements Index {
   private final Map<IndexType, List<IndexValue>> valueIndex;
   
   public DefaultIndex(Map<BinType, List<Integer>> classIndex, Map<Long, Integer> idIndex, Map<IndexType, List<IndexValue>> valueIndex) {
-    this.classIndex = Objects.requireNonNull(classIndex);
-    this.idIndex = Objects.requireNonNull(idIndex);
-    this.valueIndex = Objects.requireNonNull(valueIndex);
+    this.classIndex = new ConcurrentHashMap<>(Objects.requireNonNull(classIndex));
+    this.idIndex = new ConcurrentHashMap<>(Objects.requireNonNull(idIndex));
+    this.valueIndex = new ConcurrentHashMap<>(Objects.requireNonNull(valueIndex));
   }
   
   public DefaultIndex() {
-    this.classIndex = new ConcurrentHashMap<>();
-    this.idIndex = new ConcurrentHashMap<>();
-    this.valueIndex = new ConcurrentHashMap<>();
+    this(Collections.EMPTY_MAP, Collections.EMPTY_MAP, Collections.EMPTY_MAP);
   }
 
   @Override
