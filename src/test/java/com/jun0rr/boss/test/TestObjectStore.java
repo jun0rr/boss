@@ -6,6 +6,9 @@ package com.jun0rr.boss.test;
 
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Stored;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,7 +38,7 @@ public class TestObjectStore {
           new Address("Street" + i, "City" + i, i + 100), new long[]{299L + i})
       ).forEach(ps::add);
       if(!store.isLoaded()) {
-        ps.forEach(store::store);
+        ps.stream().map(store::store).forEach(System.out::println);
       }
       store.delete(Person.class, p->p.name().equals("Hello5"))
           .findFirst()
@@ -76,6 +79,12 @@ public class TestObjectStore {
     }
     catch(Exception e) {
       e.printStackTrace();
+    }
+    finally {
+      try { Files.delete(Paths.get("./TestObjectStore.odb0")); }
+      catch(IOException e) {
+        e.printStackTrace();
+      }
     }
   }
   

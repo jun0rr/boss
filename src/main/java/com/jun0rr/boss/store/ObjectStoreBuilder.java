@@ -21,9 +21,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 /**
  *
@@ -67,11 +67,11 @@ public class ObjectStoreBuilder {
   }
 
 
-  private InvokeStrategy<ConstructFunction> constructStrategy;
+  private List<InvokeStrategy<ConstructFunction>> constructors;
 
-  private InvokeStrategy<ExtractFunction> extractStrategy;
+  private List<InvokeStrategy<ExtractFunction>> extractors;
 
-  private InvokeStrategy<InjectFunction> injectStrategy;
+  private List<InvokeStrategy<InjectFunction>> injectors;
 
   private String volid;
 
@@ -83,32 +83,51 @@ public class ObjectStoreBuilder {
 
   private Path storePath;
 
-  public ObjectStoreBuilder() {}
-
-  public InvokeStrategy<ConstructFunction> getConstructStrategy() {
-    return constructStrategy;
+  public ObjectStoreBuilder() {
+    this.constructors = new LinkedList<>();
+    this.extractors = new LinkedList<>();
+    this.injectors = new LinkedList<>();
   }
 
-  public ObjectStoreBuilder setConstructStrategy(InvokeStrategy<ConstructFunction> constructStrategy) {
-    this.constructStrategy = constructStrategy;
+  public List<InvokeStrategy<ConstructFunction>> getConstructStrategies() {
+    return constructors;
+  }
+
+  public ObjectStoreBuilder addConstructStrategy(InvokeStrategy<ConstructFunction> constructStrategy) {
+    this.constructors.add(constructStrategy);
     return this;
   }
-
-  public InvokeStrategy<ExtractFunction> getExtractStrategy() {
-    return extractStrategy;
+  
+  public ObjectStoreBuilder setConstructStrategies(List<InvokeStrategy<ConstructFunction>> constructors) {
+    this.constructors = constructors;
+    return this;
+  }
+  
+  public List<InvokeStrategy<ExtractFunction>> getExtractStrategies() {
+    return extractors;
   }
 
   public ObjectStoreBuilder setExtractStrategy(InvokeStrategy<ExtractFunction> extractStrategy) {
-    this.extractStrategy = extractStrategy;
+    this.extractors.add(extractStrategy);
     return this;
   }
 
-  public InvokeStrategy<InjectFunction> getInjectStrategy() {
-    return injectStrategy;
+  public ObjectStoreBuilder setExtractStrategies(List<InvokeStrategy<ExtractFunction>> extractors) {
+    this.extractors = extractors;
+    return this;
   }
 
-  public ObjectStoreBuilder setInjectStrategy(InvokeStrategy<InjectFunction> injectStrategy) {
-    this.injectStrategy = injectStrategy;
+  public List<InvokeStrategy<InjectFunction>> getInjectStrategies() {
+    return injectors;
+  }
+
+  public ObjectStoreBuilder addInjectStrategy(InvokeStrategy<InjectFunction> injectStrategy) {
+    this.injectors.add(injectStrategy);
+    return this;
+  }
+
+  public ObjectStoreBuilder setInjectStrategies(List<InvokeStrategy<InjectFunction>> injectors) {
+    this.injectors = injectors;
     return this;
   }
 
@@ -159,7 +178,7 @@ public class ObjectStoreBuilder {
 
   @Override
   public String toString() {
-    return "Builder{" + "constructStrategy=" + constructStrategy + ", extractStrategy=" + extractStrategy + ", injectStrategy=" + injectStrategy + ", volumeId=" + volid + ", blockSize=" + blockSize + ", bufferSize=" + bufferSize + ", allocType=" + allocType + ", storePath=" + storePath + '}';
+    return "Builder{" + "constructors=" + constructors + ", extractors=" + extractors + ", injectors=" + injectors + ", volumeId=" + volid + ", blockSize=" + blockSize + ", bufferSize=" + bufferSize + ", allocType=" + allocType + ", storePath=" + storePath + '}';
   }
 
   public ObjectStoreBuilder set(Properties p) {
@@ -168,18 +187,27 @@ public class ObjectStoreBuilder {
       InvokeStrategy<ConstructFunction> creator = new NoArgsConstructStrategy();
       String cct = p.getProperty(PROP_CONSTRUCT_STRATEGY);
       if(cct != null) {
-        Class cctClass = Class.forName(cct);
-        this.constructStrategy = creator.invokers(cctClass).stream().findFirst().get().create();
+        List.of(cct.split(",")).stream()
+            .map(this::forName)
+            .map(c->creator.invokers(c).stream().findFirst().get().create())
+            .map(o->(InvokeStrategy<ConstructFunction>)o)
+            .forEach(constructors::add);
       }
       String ext = p.getProperty(PROP_EXTRACT_STRATEGY);
       if(ext != null) {
-        Class extClass = Class.forName(ext);
-        this.extractStrategy = creator.invokers(extClass).stream().findFirst().get().create();
+        List.of(ext.split(",")).stream()
+            .map(this::forName)
+            .map(c->creator.invokers(c).stream().findFirst().get().create())
+            .map(o->(InvokeStrategy<ExtractFunction>)o)
+            .forEach(extractors::add);
       }
       String inj = p.getProperty(PROP_INJECT_STRATEGY);
       if(inj != null) {
-        Class injClass = Class.forName(inj);
-        this.injectStrategy = creator.invokers(injClass).stream().findFirst().get().create();
+        List.of(inj.split(",")).stream()
+            .map(this::forName)
+            .map(c->creator.invokers(c).stream().findFirst().get().create())
+            .map(o->(InvokeStrategy<InjectFunction>)o)
+            .forEach(injectors::add);
       }
       this.blockSize = Integer.parseInt(p.getProperty(PROP_BLOCK_SIZE));
       this.bufferSize = Integer.parseInt(p.getProperty(PROP_BUFFER_SIZE));
@@ -194,12 +222,21 @@ public class ObjectStoreBuilder {
     }
     return this;
   }
+  
+  private Class forName(String s) {
+    try {
+      return Class.forName(s);
+    }
+    catch(ClassNotFoundException e) {
+      throw new ObjectStoreException(e);
+    }
+  }
 
   public ObjectStore build() {
-    if(this.constructStrategy == null) {
+    if(this.constructors == null) {
       throw new IllegalStateException("ConstructStrategy is not defined");
     }
-    if(this.extractStrategy == null) {
+    if(this.extractors == null) {
       throw new IllegalStateException("ExtractStrategy is not defined");
     }
     if(this.allocType == null) {
@@ -219,11 +256,14 @@ public class ObjectStoreBuilder {
   
   private BinContext buildContext() {
     BinContext ctx = BinContext.newContext();
-    ctx.mapper().constructStrategy().add(constructStrategy);
-    ctx.mapper().extractStrategy().add(extractStrategy);
-    if(this.injectStrategy != null) {
-      ctx.mapper().injectStrategy().add(injectStrategy);
+    constructors.forEach(ctx.mapper().constructStrategies()::add);
+    extractors.forEach(ctx.mapper().extractStrategies()::add);
+    if(!this.injectors.isEmpty()) {
+      injectors.forEach(ctx.mapper().injectStrategies()::add);
     }
+    System.out.printf("* Constructors: %s%n", constructors);
+    System.out.printf("* Extractors..: %s%n", extractors);
+    System.out.printf("* Injectors...: %s%n", injectors);
     BinType<IndexType> itype = BinType.of(IndexType.class);
     BinType<IndexValue> ivalue = BinType.of(IndexValue.class);
     BinType<DefaultIndex> indexType = BinType.of(DefaultIndex.class);

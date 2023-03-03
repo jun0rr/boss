@@ -91,6 +91,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T> Stored<T> store(T o) {
     Block b = volume.allocate();
     ContextEvent evt = context.write(b.buffer().position(Long.BYTES), o);
+    System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
     b.buffer().position(0).putLong(evt.checksum());
     storeIndex(o, b, evt);
     return Stored.of(evt.checksum(), b.index(), o);
@@ -114,7 +115,7 @@ public class DefaultObjectStore implements ObjectStore {
     //System.out.printf("ObjectStore.updateValueIndex(%s): names=%s%n", entry.getKey().name(), names);
     for(String name : names) {
       final Object ob = val;
-      val = context.mapper().extractStrategy().stream()
+      val = context.mapper().extractStrategies().stream()
         .flatMap(s->s.invokers(ob.getClass()).stream())
         .filter(f->f.name().equals(name))
         .findFirst().get().extract(val);
@@ -150,6 +151,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p) {
     return index.findByType(c).mapToObj(volume::get)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())))
+        .peek(System.out::println)
         .filter(s->p.test(s.object()));
   }
 
@@ -157,6 +159,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T, V> Stream<Stored<T>> find(Class<T> c, String name, V v) {
     return index.findByValue(c, name, v)
         .mapToObj(volume::get)
+        .peek(System.out::println)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())));
   }
 
@@ -197,7 +200,7 @@ public class DefaultObjectStore implements ObjectStore {
         Object val = s.object();
         for(String name : names) {
           final Object ob = val;
-          val = context.mapper().extractStrategy().stream()
+          val = context.mapper().extractStrategies().stream()
             .flatMap(t->t.invokers(ob.getClass()).stream())
             .filter(f->f.name().equals(name))
             .findFirst().get().extract(val);
