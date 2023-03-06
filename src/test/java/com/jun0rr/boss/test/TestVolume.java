@@ -10,6 +10,8 @@ import com.jun0rr.boss.volume.DefaultVolume;
 import com.jun0rr.binj.buffer.BufferAllocator;
 import com.jun0rr.binj.buffer.MappedBufferAllocator;
 import com.jun0rr.binj.buffer.PathSupplier;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.Assertions;
@@ -49,6 +51,7 @@ public class TestVolume {
     try {
       Path root = Paths.get("./");
       PathSupplier ps = PathSupplier.of(root, "testMapped", "db");
+      ps.existing().forEach(this::delete);
       MappedBufferAllocator ma = new MappedBufferAllocator(ps, 128);
       Volume v = new DefaultVolume("testMapped", 64, ma.readBuffers(), ma);
       System.out.println(v);
@@ -59,7 +62,9 @@ public class TestVolume {
         bs[i] = (byte) (Math.random() * Byte.MAX_VALUE * 2);
       }
       b.buffer().put(bs);
+      System.out.println(b);
       b = v.get(b.index());
+      System.out.println(b);
       byte[] gs = new byte[bs.length];
       b.buffer().get(gs);
       Assertions.assertArrayEquals(bs, gs);
@@ -71,6 +76,15 @@ public class TestVolume {
     catch(Exception e) {
       e.printStackTrace();
       throw e;
+    }
+  }
+  
+  private void delete(Path p) {
+    try {
+      Files.deleteIfExists(p);
+    }
+    catch(IOException e) {
+      throw new RuntimeException(e);
     }
   }
   
