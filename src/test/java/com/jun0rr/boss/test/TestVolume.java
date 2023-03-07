@@ -36,13 +36,43 @@ public class TestVolume {
     }
     b.buffer().put(bs);
     System.out.println(v);
-    b = v.get(b.index());
+    b = v.get(b.offset());
     byte[] gs = new byte[bs.length];
     b.buffer().get(gs);
     Assertions.assertArrayEquals(bs, gs);
     v.release(b);
     v.close();
     System.out.println(v);
+  }
+  
+  @Test
+  public void testDirect() throws Exception {
+    System.out.println("---+--- testDirect ---+---");
+    try {
+      Volume v = new DefaultVolume("testMapped", 64, BufferAllocator.directAllocator(128));
+      System.out.println(v);
+      Block b = v.allocate();
+      System.out.println(b);
+      byte[] bs = new byte[300];
+      for(int i = 0; i < bs.length; i++) {
+        bs[i] = (byte) (Math.random() * Byte.MAX_VALUE * 2);
+      }
+      b.buffer().put(bs);
+      System.out.println(b);
+      b = v.get(b.offset());
+      System.out.println(b);
+      byte[] gs = new byte[bs.length];
+      b.buffer().get(gs);
+      Assertions.assertArrayEquals(bs, gs);
+      v.release(b);
+      System.out.println(v);
+      System.out.println("closing...");
+      v.close();
+    }
+    catch(Exception e) {
+      e.printStackTrace();
+      throw e;
+    }
   }
   
   @Test
@@ -63,7 +93,7 @@ public class TestVolume {
       }
       b.buffer().put(bs);
       System.out.println(b);
-      b = v.get(b.index());
+      b = v.get(b.offset());
       System.out.println(b);
       byte[] gs = new byte[bs.length];
       b.buffer().get(gs);

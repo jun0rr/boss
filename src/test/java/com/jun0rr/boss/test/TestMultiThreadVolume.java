@@ -64,7 +64,7 @@ public class TestMultiThreadVolume {
     return v->{
       Block b = v.allocate();
       IntStream.range(10, 30).forEach(b.buffer()::putInt);
-      offsets.offer(b.index());
+      offsets.offer(b.offset());
       b.buffer().flip();
       //System.out.printf("put(%d): %s, %s%n", b.index(), IntStream.range(10, 30).mapToObj(j->b.buffer().getInt()).collect(Collectors.toList()), b);
     };
@@ -73,7 +73,7 @@ public class TestMultiThreadVolume {
   private Consumer<Volume> read(int idx) {
     return v->{
       Block b = v.get(idx);
-      System.out.printf("get(%d, %s): %s%n", b.index(), Thread.currentThread(), b);
+      System.out.printf("get(%d, %s): %s%n", b.offset(), Thread.currentThread(), b);
       IntStream.range(10, 30).forEach(j->Assertions.assertEquals(j, b.buffer().getInt()));
       v.release(b);
       //System.out.printf("%s%n", IntStream.range(10, 30).mapToObj(j->b.buffer().getInt()).collect(Collectors.toList()));

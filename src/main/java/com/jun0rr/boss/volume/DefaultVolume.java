@@ -107,10 +107,9 @@ public class DefaultVolume implements Volume {
   private void forceWrite(int offset) {
     if(offset < 0) return;
     int idx = offset / malloc.bufferSize();
-    int pos = offset - idx * malloc.bufferSize();
     if(idx >= 0 && idx < buffers.size()) {
       //System.out.printf("DefaultVolume.forceWrite(%d): idx=%d, pos=%s, buffer=%s%n", offset, idx, pos, buffers.get(idx));
-      ((MappedByteBuffer)buffers.get(idx)).force(pos, blockSize);
+      ((MappedByteBuffer)buffers.get(idx)).force();
     }
   }
   
@@ -151,7 +150,7 @@ public class DefaultVolume implements Volume {
     //System.out.printf("* DefaultVolume.allocateSlice1(%s): last=%s, ob=%s%n", buf, last, ob);
     last.buffer().position(0).putInt(ob.offset());
     System.out.printf("* DefaultVolume.allocateSlice2(%s): (%d)->(%d)%n", buf, last.offset(), last.buffer().position(0).getInt());
-    forceWrite(last.offset());
+    //forceWrite(last.offset());
     return ob.buffer().position(Integer.BYTES).slice();
   }
   
@@ -179,7 +178,7 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Volume release(Block blk) {
-    return release(blk.index());
+    return release(blk.offset());
   }
 
   @Override
@@ -224,7 +223,7 @@ public class DefaultVolume implements Volume {
   public Block metadata() {
     if(metaidx.get() < 0) {
       Block b = allocate();
-      metaidx.set(b.index());
+      metaidx.set(b.offset());
       return b;
     }
     else {

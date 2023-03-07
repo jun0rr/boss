@@ -15,7 +15,7 @@ public interface Stored<T> {
   
   public long id();
   
-  public int index();
+  public int offset();
   
   public T object();
   

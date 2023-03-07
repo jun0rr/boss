@@ -94,17 +94,17 @@ public class DefaultObjectStore implements ObjectStore {
     System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
     b.buffer().position(0).putLong(evt.checksum());
     storeIndex(o, b, evt);
-    return Stored.of(evt.checksum(), b.index(), o);
+    return Stored.of(evt.checksum(), b.offset(), o);
   }
   
   private synchronized void storeIndex(Object o, Block b, ContextEvent evt) {
-    index.idIndex().put(evt.checksum(), b.index());
+    index.idIndex().put(evt.checksum(), b.offset());
     List<Integer> is = index.classIndex().get(evt.codec().bintype());
     if(is == null) {
       is = new CopyOnWriteArrayList<>();
       index.classIndex().put(evt.codec().bintype(), is);
     }
-    is.add(b.index());
+    is.add(b.offset());
     index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
         .forEach(e->updateValueIndex(o, b, e));
@@ -121,7 +121,7 @@ public class DefaultObjectStore implements ObjectStore {
         .findFirst().get().extract(val);
       //System.out.println("ObjectStore.updateValueIndex(): val=" + val);
     }
-    entry.getValue().add(new IndexValue(val, b.index()));
+    entry.getValue().add(new IndexValue(val, b.offset()));
   }
   
   @Override
@@ -150,7 +150,7 @@ public class DefaultObjectStore implements ObjectStore {
   @Override
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p) {
     return index.findByType(c).mapToObj(volume::get)
-        .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())))
+        .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
         .peek(System.out::println)
         .filter(s->p.test(s.object()));
   }
@@ -160,7 +160,7 @@ public class DefaultObjectStore implements ObjectStore {
     return index.findByValue(c, name, v)
         .mapToObj(volume::get)
         .peek(System.out::println)
-        .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())));
+        .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())));
   }
 
   @Override
@@ -186,10 +186,10 @@ public class DefaultObjectStore implements ObjectStore {
         .filter(e->e.getKey().isTypeOf(c))
         .map(Entry::getValue)
         .findFirst()
-        .ifPresent(l->l.remove(Integer.valueOf(s.index()))))
+        .ifPresent(l->l.remove(Integer.valueOf(s.offset()))))
         .peek(s->index.idIndex().remove(s.id()))
         .peek(this::removeValueIndex)
-        .peek(s->volume.release(s.index()));
+        .peek(s->volume.release(s.offset()));
   }
   
   private <T> void removeValueIndex(Stored<T> s) {
@@ -221,8 +221,8 @@ public class DefaultObjectStore implements ObjectStore {
     List<IndexValue> ls = new CopyOnWriteArrayList<>();
     index.findByType(c)
         .mapToObj(volume::get)
-        .map(b->Stored.of(b.buffer().position(0).getLong(), b.index(), context.read(b.buffer())))
-        .map(s->new IndexValue(fn.apply((T)s.object()), s.index()))
+        .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
+        .map(s->new IndexValue(fn.apply((T)s.object()), s.offset()))
         .forEach(ls::add);
     index.valueIndex().put(t, ls);
   }

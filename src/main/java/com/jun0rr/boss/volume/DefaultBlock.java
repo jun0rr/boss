@@ -41,7 +41,7 @@ public class DefaultBlock implements Block {
   }
 
   @Override
-  public int index() {
+  public int offset() {
     return offset;
   }
 

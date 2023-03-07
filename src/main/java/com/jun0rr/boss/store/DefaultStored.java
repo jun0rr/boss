@@ -31,7 +31,7 @@ public class DefaultStored<T> implements Stored<T> {
   }
 
   @Override
-  public int index() {
+  public int offset() {
     return index;
   }
 
