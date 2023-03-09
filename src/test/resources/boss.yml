@@ -1,0 +1,20 @@
+volume:
+  id: TestObjectStore
+  buffer:
+    size: 1024
+    #{heap|direct}
+    type: direct
+  store:
+    path: ./
+    sync: true
+mapper:
+  construct:
+    - com.jun0rr.binj.mapping.DefaultConstructStrategy
+    - com.jun0rr.binj.mapping.AnnotationConstructStrategy
+  extract:
+    - com.jun0rr.binj.mapping.FieldGetterStrategy
+    - com.jun0rr.binj.mapping.AnnotationExtractStrategy
+  inject:
+    - com.jun0rr.binj.mapping.AnnotationInjectStrategy
+    - com.jun0rr.binj.mapping.SetterStrategy
+    - com.jun0rr.binj.mapping.FieldSetterStrategy
