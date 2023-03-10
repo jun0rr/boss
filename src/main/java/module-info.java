@@ -4,7 +4,7 @@
 module jun0rr.boss {
   requires java.base;
   requires jun0rr.binj;
-  requires 
+  requires yamlbeans;
   exports com.jun0rr.boss;
   exports com.jun0rr.boss.store;
 }

@@ -4,18 +4,15 @@
  */
 package com.jun0rr.boss;
 
-import java.io.Closeable;
-import java.util.Map;
+import com.jun0rr.boss.config.VolumeConfig;
 
 /**
  *
  * @author F6036477
  */
-public interface Volume extends Closeable {
+public interface Volume extends AutoCloseable {
   
-  public String id();
-  
-  public int blockSize();
+  public VolumeConfig config();
   
   public Block allocate();
   
@@ -32,5 +29,7 @@ public interface Volume extends Closeable {
   @Override public void close();
   
   public boolean isLoaded();
+  
+  public Volume commit(Block b);
   
 }

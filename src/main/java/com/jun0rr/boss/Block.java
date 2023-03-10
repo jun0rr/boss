@@ -10,12 +10,20 @@ import com.jun0rr.binj.buffer.BinBuffer;
  *
  * @author F6036477
  */
-public interface Block {
+public record Block(Volume volume, BinBuffer buffer, long offset) implements AutoCloseable {
   
-  public Volume volume();
+  public Block commit() {
+    volume.commit(this);
+    return this;
+  }
+
+  @Override
+  public void close() {
+    commit();
+  }
   
-  public BinBuffer buffer();
-  
-  public int offset();
+  public static Block of(Volume v, BinBuffer b, long offset) {
+    return new Block(v, b, offset);
+  }
   
 }

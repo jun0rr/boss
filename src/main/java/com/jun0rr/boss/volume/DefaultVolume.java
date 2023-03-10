@@ -38,7 +38,7 @@ public class DefaultVolume implements Volume {
   
   private final List<ByteBuffer> buffers;
   
-  private final Queue<OffsetBuffer> freebufs;
+  private final Queue<OffsetBuffer1> freebufs;
   
   private final AtomicInteger woffset;
   
@@ -94,14 +94,14 @@ public class DefaultVolume implements Volume {
     return buffers.stream().mapToInt(ByteBuffer::capacity).sum();
   }
   
-  private OffsetBuffer getOffsetBuffer(int offset) {
+  private OffsetBuffer1 getOffsetBuffer(int offset) {
     if(offset < 0) return null;
     int idx = offset / malloc.bufferSize();
     int pos = offset - idx * malloc.bufferSize();
     //System.out.printf("Volume.getOffsetBuffer(%d): idx=%d, pos=%s, buffers.size=%s, thread=%s%n", offset, idx, pos, buffers.size(), Thread.currentThread());
     System.out.printf("DefaultVolume.getOffsetBuffer(%d): idx=%d, pos=%s, buffer=%s%n", offset, idx, pos, buffers.get(idx));
     ByteBuffer bb = buffers.get(idx).clear().position(pos).limit(pos + blockSize);
-    return new OffsetBuffer(offset, bb.slice());
+    return new OffsetBuffer1(offset, bb.slice());
   }
   
   private void forceWrite(int offset) {
@@ -113,8 +113,8 @@ public class DefaultVolume implements Volume {
     }
   }
   
-  private synchronized OffsetBuffer allocateFreeBuffer() {
-    OffsetBuffer buf = null;
+  private synchronized OffsetBuffer1 allocateFreeBuffer() {
+    OffsetBuffer1 buf = null;
     if(!freebufs.isEmpty()) {
       buf = freebufs.poll();
     }
@@ -129,8 +129,8 @@ public class DefaultVolume implements Volume {
     return buf;
   }
   
-  private OffsetBuffer last(OffsetBuffer buf) {
-    OffsetBuffer last = buf;
+  private OffsetBuffer1 last(OffsetBuffer1 buf) {
+    OffsetBuffer1 last = buf;
     byte[] bs = new byte[4];
     last.buffer().position(0).get(bs);
     int nos = ByteBuffer.wrap(bs).getInt();
@@ -144,9 +144,9 @@ public class DefaultVolume implements Volume {
     return last;
   }
   
-  private ByteBuffer allocateSlice(OffsetBuffer buf) {
-    OffsetBuffer last = last(buf);
-    OffsetBuffer ob = allocateFreeBuffer();
+  private ByteBuffer allocateSlice(OffsetBuffer1 buf) {
+    OffsetBuffer1 last = last(buf);
+    OffsetBuffer1 ob = allocateFreeBuffer();
     //System.out.printf("* DefaultVolume.allocateSlice1(%s): last=%s, ob=%s%n", buf, last, ob);
     last.buffer().position(0).putInt(ob.offset());
     System.out.printf("* DefaultVolume.allocateSlice2(%s): (%d)->(%d)%n", buf, last.offset(), last.buffer().position(0).getInt());
@@ -161,7 +161,7 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Block allocate(int size) {
-    OffsetBuffer buf = allocateFreeBuffer();
+    OffsetBuffer1 buf = allocateFreeBuffer();
     BufferAllocator alloc = new DefaultBufferAllocator(blockSize - Integer.BYTES) {
       @Override
       public ByteBuffer alloc(int size) {
@@ -187,7 +187,7 @@ public class DefaultVolume implements Volume {
     metaidx.compareAndSet(offset, -1);
     int nos = offset;
     do {
-      OffsetBuffer buf = getOffsetBuffer(nos);
+      OffsetBuffer1 buf = getOffsetBuffer(nos);
       nos = buf.buffer().position(0).getInt();
       buf.buffer().position(0).putInt(-1);
       if(buf.offset() > 0 && !freebufs.contains(buf)) {
@@ -199,14 +199,14 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Block get(int offset) {
-    OffsetBuffer buf = getOffsetBuffer(offset);
+    OffsetBuffer1 buf = getOffsetBuffer(offset);
     BufferAllocator alloc = new DefaultBufferAllocator(blockSize - Integer.BYTES) {
       @Override
       public ByteBuffer alloc(int size) {
         return allocateSlice(buf);
       }
     };
-    OffsetBuffer last = last(buf);
+    OffsetBuffer1 last = last(buf);
     System.out.printf("* DefaultVolume.get(%d): buf=%s, last=%s%n", offset, buf, last);
     List<ByteBuffer> bufs = new ArrayList<>();
     last = buf;

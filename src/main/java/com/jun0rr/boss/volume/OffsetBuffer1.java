@@ -4,43 +4,29 @@
  */
 package com.jun0rr.boss.volume;
 
-import com.jun0rr.binj.buffer.BinBuffer;
-import com.jun0rr.boss.Block;
-import com.jun0rr.boss.Volume;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
  *
  * @author F6036477
  */
-public class DefaultBlock implements Block {
+public class OffsetBuffer1 {
   
-  private final Volume volume;
-  
-  private final BinBuffer buffer;
+  private final ByteBuffer buffer;
   
   private final int offset;
   
-  public DefaultBlock(Volume vol, BinBuffer buf, int offset) {
-    this.volume = Objects.requireNonNull(vol);
+  
+  public OffsetBuffer1(int offset, ByteBuffer buf) {
     this.buffer = Objects.requireNonNull(buf);
-    if(offset < 0) {
-      throw new IllegalArgumentException(String.format("Bad offset (%d)", offset));
-    }
     this.offset = offset;
   }
-
-  @Override
-  public BinBuffer buffer() {
+  
+  public ByteBuffer buffer() {
     return buffer;
   }
-
-  @Override
-  public Volume volume() {
-    return volume;
-  }
-
-  @Override
+  
   public int offset() {
     return offset;
   }
@@ -48,8 +34,8 @@ public class DefaultBlock implements Block {
   @Override
   public int hashCode() {
     int hash = 7;
-    hash = 47 * hash + Objects.hashCode(this.volume);
-    hash = 47 * hash + this.offset;
+    hash = 79 * hash + Objects.hashCode(this.buffer);
+    hash = 79 * hash + this.offset;
     return hash;
   }
 
@@ -64,16 +50,16 @@ public class DefaultBlock implements Block {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final DefaultBlock other = (DefaultBlock) obj;
+    final OffsetBuffer1 other = (OffsetBuffer1) obj;
     if (this.offset != other.offset) {
       return false;
     }
-    return Objects.equals(this.volume, other.volume);
+    return Objects.equals(this.buffer, other.buffer);
   }
 
   @Override
   public String toString() {
-    return "Block{" + "volumeID=" + volume.id() + ", offset=" + offset + ", buffer=" + buffer + '}';
+    return "OffsetBuffer{" + "offset=" + offset + ", buffer=" + buffer + '}';
   }
   
 }

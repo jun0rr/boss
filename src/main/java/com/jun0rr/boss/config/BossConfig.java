@@ -4,10 +4,38 @@
  */
 package com.jun0rr.boss.config;
 
-import java.nio.file.Path;
+import com.esotericsoftware.yamlbeans.YamlException;
+import com.esotericsoftware.yamlbeans.YamlReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Map;
 
 /**
  *
  * @author F6036477
  */
-public record BossConfig(VolumeConfig volume, MapperConfig mapper) {}
+public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
+
+  public static BossConfig from(Map map) {
+    Map vc = (Map) map.get("volume");
+    if(vc == null) {
+      throw new BossConfigException("Bad null BossConfig.volume");
+    }
+    Map mc = (Map)map.get("mapper");
+    if(mc == null) {
+      throw new BossConfigException("Bad null BossConfig.mapper");
+    }
+    return new BossConfig(VolumeConfig.from(vc), MapperConfig.from(mc));
+  }
+  
+  public static BossConfig from(InputStream is) {
+    try {
+      YamlReader yr = new YamlReader(new InputStreamReader(is));
+      return from((Map)yr.read());
+    }
+    catch(YamlException e) {
+      throw new BossConfigException(e);
+    }
+  }
+  
+}

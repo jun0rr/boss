@@ -1,65 +1,36 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Record.java to edit this template
  */
 package com.jun0rr.boss.volume;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *
  * @author F6036477
  */
-public class OffsetBuffer {
+public record OffsetBuffer(long offset, ByteBuffer buffer) implements Comparable<OffsetBuffer> {
   
-  private final ByteBuffer buffer;
-  
-  private final int offset;
-  
-  
-  public OffsetBuffer(int offset, ByteBuffer buf) {
-    this.buffer = Objects.requireNonNull(buf);
-    this.offset = offset;
-  }
-  
-  public ByteBuffer buffer() {
-    return buffer;
-  }
-  
-  public int offset() {
-    return offset;
+  public OffsetBuffer {
+    if(offset < 0) throw new IllegalArgumentException("Bad negative offset: " + offset);
+    if(buffer == null) throw new IllegalArgumentException("Bad null ByteBuffer");
   }
 
   @Override
-  public int hashCode() {
-    int hash = 7;
-    hash = 79 * hash + Objects.hashCode(this.buffer);
-    hash = 79 * hash + this.offset;
-    return hash;
+  public int compareTo(OffsetBuffer o) {
+    return Long.compare(offset, o.offset);
   }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final OffsetBuffer other = (OffsetBuffer) obj;
-    if (this.offset != other.offset) {
-      return false;
-    }
-    return Objects.equals(this.buffer, other.buffer);
+  
+  private static final AtomicLong INCREMENTAL = new AtomicLong(1L);
+  
+  public static OffsetBuffer of(ByteBuffer buffer) {
+    return new OffsetBuffer(INCREMENTAL.getAndIncrement(), buffer);
   }
-
-  @Override
-  public String toString() {
-    return "OffsetBuffer{" + "offset=" + offset + ", buffer=" + buffer + '}';
+  
+  public static OffsetBuffer of(long offset, ByteBuffer buffer) {
+    return new OffsetBuffer(offset, buffer);
   }
   
 }
