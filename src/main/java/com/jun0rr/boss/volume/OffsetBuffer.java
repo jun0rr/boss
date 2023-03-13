@@ -23,10 +23,10 @@ public record OffsetBuffer(long offset, ByteBuffer buffer) implements Comparable
     return Long.compare(offset, o.offset);
   }
   
-  private static final AtomicLong INCREMENTAL = new AtomicLong(1L);
+  private static final AtomicLong INC_OFFSET = new AtomicLong(1L);
   
   public static OffsetBuffer of(ByteBuffer buffer) {
-    return new OffsetBuffer(INCREMENTAL.getAndIncrement(), buffer);
+    return new OffsetBuffer(INC_OFFSET.getAndIncrement(), buffer);
   }
   
   public static OffsetBuffer of(long offset, ByteBuffer buffer) {

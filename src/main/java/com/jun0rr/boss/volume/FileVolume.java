@@ -10,9 +10,11 @@ import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.VolumeConfig;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +39,7 @@ public class FileVolume implements Volume {
   
   private final FileChannel channel;
   
-  private final Map<Long,Cached<OffsetBuffer>> buffers;
+  private final Map<Long,Cached<OffsetBuffer>> cache;
   
   private final Queue<Long> freebufs;
   
@@ -50,7 +52,7 @@ public class FileVolume implements Volume {
   public FileVolume(VolumeConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
     this.malloc = config.buffer().bufferAllocator();
-    this.buffers = new ConcurrentSkipListMap<>();
+    this.cache = new ConcurrentSkipListMap<>();
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.woffset = new AtomicLong(config.buffer().size());
     this.metaidx = new AtomicLong(-1L);
@@ -70,7 +72,7 @@ public class FileVolume implements Volume {
   }
   
   private void loadFreebufs() {
-    if(buffers.isEmpty()) return;
+    if(cache.isEmpty()) return;
     Block b = get(0);
     if(METADATA_ID == b.buffer().get()) {
       woffset.set(b.buffer().getInt());
@@ -87,7 +89,34 @@ public class FileVolume implements Volume {
   
   private OffsetBuffer allocateOffsetBuffer() {
     long offset = !freebufs.isEmpty() ? freebufs.poll() : woffset.getAndAdd(config.buffer().size());
-    return OffsetBuffer.of(offset, malloc.alloc());
+    OffsetBuffer ob = OffsetBuffer.of(offset, malloc.alloc());
+    putCache(ob);
+    return ob;
+  }
+  
+  private OffsetBuffer last(OffsetBuffer buf) {
+    OffsetBuffer last = buf;
+    byte[] bs = new byte[4];
+    last.buffer().position(0).get(bs);
+    int nos = ByteBuffer.wrap(bs).getInt();
+    //System.out.printf("* DefaultVolume.last1(%s): bs=%s, nos=%d%n", buf, Arrays.toString(bs), nos);
+    while(nos >= 0 && nos != buf.offset()) {
+      last = ;
+      //System.out.printf("* DefaultVolume.last2(%s): nos=%d%n", buf, nos);
+      nos = last.buffer().position(0).getInt();
+    }
+    System.out.printf("* DefaultVolume.last2(%s): last=%s%n", buf, last);
+    return last;
+  }
+  
+  private ByteBuffer allocateSlice(OffsetBuffer1 buf) {
+    OffsetBuffer1 last = last(buf);
+    OffsetBuffer1 ob = allocateFreeBuffer();
+    //System.out.printf("* DefaultVolume.allocateSlice1(%s): last=%s, ob=%s%n", buf, last, ob);
+    last.buffer().position(0).putInt(ob.offset());
+    System.out.printf("* DefaultVolume.allocateSlice2(%s): (%d)->(%d)%n", buf, last.offset(), last.buffer().position(0).getInt());
+    //forceWrite(last.offset());
+    return ob.buffer().position(Integer.BYTES).slice();
   }
   
   private OffsetBufferAllocator offsetAllocator() {
@@ -102,11 +131,24 @@ public class FileVolume implements Volume {
       }
     };
   }
+  
+  private void putCache(OffsetBuffer o) {
+    if(cache.values().stream()
+        .map(Cached::content)
+        .mapToLong(b->b.buffer().capacity())
+        .sum() >= config.buffer().maxCacheSize()
+    ) {
+      cache.entrySet().stream()
+          .min((a,b)->a.getValue().compareTo(b.getValue()))
+          .ifPresent(e->cache.remove(e.getKey()));
+    }
+    cache.put(o.offset(), new Cached(o));
+  }
 
   @Override
   public Block allocate() {
     OffsetBuffer buf = allocateOffsetBuffer();
-    BinBuffer bb = new OffsetBinBuffer(offsetAllocator(), List.of(buf));
+    BinBuffer bb = new OffsetBinBuffer2(offsetAllocator(), List.of(buf));
     return Block.of(this, bb, buf.offset());
   }
 
@@ -121,7 +163,7 @@ public class FileVolume implements Volume {
       total += ob.buffer().capacity();
       bufs.add(ob);
     }
-    BinBuffer bb = new OffsetBinBuffer(offsetAllocator(), bufs);
+    BinBuffer bb = new OffsetBinBuffer2(offsetAllocator(), bufs);
     return Block.of(this, bb, buf.offset());
   }
 
