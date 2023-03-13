@@ -6,15 +6,16 @@ package com.jun0rr.boss.volume;
 
 import com.jun0rr.binj.buffer.BinBuffer;
 import com.jun0rr.binj.buffer.BufferAllocator;
+import com.jun0rr.binj.buffer.DefaultBinBuffer;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.VolumeConfig;
+import com.jun0rr.unchecked.Unchecked;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
@@ -68,17 +70,17 @@ public class FileVolume implements Volume {
     catch(IOException e) {
       throw new VolumeException(e);
     }
-    loadFreebufs();
+    loadMetadata();
   }
   
-  private void loadFreebufs() {
-    if(cache.isEmpty()) return;
+  private void loadMetadata() {
     Block b = get(0);
     if(METADATA_ID == b.buffer().get()) {
-      woffset.set(b.buffer().getInt());
-      metaidx.set(b.buffer().getInt());
-      int size = b.buffer().getShort();
-      IntStream.range(0, size).forEach(i->freebufs.add(getOffsetBuffer(b.buffer().getInt())));
+      woffset.set(b.buffer().getLong());
+      metaidx.set(b.buffer().getLong());
+      int size = b.buffer().getInt();
+      IntStream.range(0, size)
+          .forEach(i->freebufs.add(b.buffer().getLong()));
     }
   }
 
@@ -87,52 +89,7 @@ public class FileVolume implements Volume {
     return config;
   }
   
-  private OffsetBuffer allocateOffsetBuffer() {
-    long offset = !freebufs.isEmpty() ? freebufs.poll() : woffset.getAndAdd(config.buffer().size());
-    OffsetBuffer ob = OffsetBuffer.of(offset, malloc.alloc());
-    putCache(ob);
-    return ob;
-  }
-  
-  private OffsetBuffer last(OffsetBuffer buf) {
-    OffsetBuffer last = buf;
-    byte[] bs = new byte[4];
-    last.buffer().position(0).get(bs);
-    int nos = ByteBuffer.wrap(bs).getInt();
-    //System.out.printf("* DefaultVolume.last1(%s): bs=%s, nos=%d%n", buf, Arrays.toString(bs), nos);
-    while(nos >= 0 && nos != buf.offset()) {
-      last = ;
-      //System.out.printf("* DefaultVolume.last2(%s): nos=%d%n", buf, nos);
-      nos = last.buffer().position(0).getInt();
-    }
-    System.out.printf("* DefaultVolume.last2(%s): last=%s%n", buf, last);
-    return last;
-  }
-  
-  private ByteBuffer allocateSlice(OffsetBuffer1 buf) {
-    OffsetBuffer1 last = last(buf);
-    OffsetBuffer1 ob = allocateFreeBuffer();
-    //System.out.printf("* DefaultVolume.allocateSlice1(%s): last=%s, ob=%s%n", buf, last, ob);
-    last.buffer().position(0).putInt(ob.offset());
-    System.out.printf("* DefaultVolume.allocateSlice2(%s): (%d)->(%d)%n", buf, last.offset(), last.buffer().position(0).getInt());
-    //forceWrite(last.offset());
-    return ob.buffer().position(Integer.BYTES).slice();
-  }
-  
-  private OffsetBufferAllocator offsetAllocator() {
-    return new OffsetBufferAllocator() {
-      @Override
-      public OffsetBuffer alloc() {
-        return allocateOffsetBuffer();
-      }
-      @Override
-      public int bufferSize() {
-        return config.buffer().size();
-      }
-    };
-  }
-  
-  private void putCache(OffsetBuffer o) {
+  private Cached<OffsetBuffer> putCached(OffsetBuffer o) {
     if(cache.values().stream()
         .map(Cached::content)
         .mapToLong(b->b.buffer().capacity())
@@ -142,54 +99,181 @@ public class FileVolume implements Volume {
           .min((a,b)->a.getValue().compareTo(b.getValue()))
           .ifPresent(e->cache.remove(e.getKey()));
     }
-    cache.put(o.offset(), new Cached(o));
+    Cached<OffsetBuffer> cached = Cached.of(o);
+    cache.put(o.offset(), cached);
+    return cached;
   }
 
+  private OffsetBuffer getOffsetBuffer(long offset) {
+    if(offset < 0 || offset > Unchecked.call(()->channel.size())) {
+      throw new IllegalArgumentException("Bad offset: " + offset);
+    }
+    Cached<OffsetBuffer> ob = cache.get(offset);
+    if(ob == null) {
+      ByteBuffer bb = malloc.alloc();
+      Unchecked.call(()->channel.read(bb, offset));
+      ob = putCached(OffsetBuffer.of(offset, bb));
+    }
+    return ob.content();
+  }
+  
+  private long getNextOffset(OffsetBuffer buf) {
+    long next = buf.buffer().position(0).getLong();
+    buf.buffer().clear();
+    return next;
+  }
+
+  private void setNextOffset(OffsetBuffer buf, long next) {
+    buf.buffer().position(0).putLong(next);
+    buf.buffer().clear();
+  }
+
+  private OffsetBuffer allocateOffsetBuffer() {
+    long offset = !freebufs.isEmpty() 
+        ? freebufs.poll() 
+        : woffset.getAndAdd(config.buffer().size());
+    OffsetBuffer ob = OffsetBuffer.of(offset, malloc.alloc());
+    setNextOffset(ob, -1L);
+    return putCached(ob).content();
+  }
+  
+  private OffsetBuffer last(OffsetBuffer buf) {
+    OffsetBuffer last = buf;
+    long nextOffset = getNextOffset(last);
+    while(nextOffset >= 0 && nextOffset != buf.offset()) {
+      last = getOffsetBuffer(nextOffset);
+      nextOffset = getNextOffset(last);
+    }
+    return last;
+  }
+  
+  private ByteBuffer slicedBuffer(OffsetBuffer buf) {
+    return buf.buffer().position(Long.BYTES).slice();
+  }
+  
+  private OffsetBuffer allocateNextBuffer(OffsetBuffer buf) {
+    OffsetBuffer ob = allocateOffsetBuffer();
+    setNextOffset(last(buf), ob.offset());
+    return ob;
+  }
+  
+  private BufferAllocator innerAllocator(OffsetBuffer buf) {
+    return new BufferAllocator() {
+      @Override
+      public ByteBuffer alloc() {
+        return slicedBuffer(allocateNextBuffer(buf));
+      }
+      @Override
+      public int bufferSize() {
+        return config.buffer().size();
+      }
+    };
+  }
+  
   @Override
   public Block allocate() {
     OffsetBuffer buf = allocateOffsetBuffer();
-    BinBuffer bb = new OffsetBinBuffer2(offsetAllocator(), List.of(buf));
+    BinBuffer bb = new DefaultBinBuffer(innerAllocator(buf), List.of(slicedBuffer(buf)));
     return Block.of(this, bb, buf.offset());
   }
 
   @Override
   public Block allocate(int size) {
     OffsetBuffer buf = allocateOffsetBuffer();
-    int total = buf.buffer().capacity();
-    List<OffsetBuffer> bufs = new LinkedList<>();
-    bufs.add(buf);
+    int total = buf.buffer().capacity() - Long.BYTES;
+    List<ByteBuffer> bufs = new LinkedList<>();
+    bufs.add(slicedBuffer(buf));
     while(total < size) {
-      OffsetBuffer ob = allocateOffsetBuffer();
-      total += ob.buffer().capacity();
-      bufs.add(ob);
+      OffsetBuffer ob = allocateNextBuffer(buf);
+      total += ob.buffer().capacity() - Long.BYTES;
+      bufs.add(slicedBuffer(ob));
     }
-    BinBuffer bb = new OffsetBinBuffer2(offsetAllocator(), bufs);
+    BinBuffer bb = new DefaultBinBuffer(innerAllocator(buf), bufs);
     return Block.of(this, bb, buf.offset());
+  }
+
+  public Async<Block> allocAsync() {
+    Async<Block> a = new Async();
+    ForkJoinPool.commonPool().submit(a.exec(()->allocate()));
+    return a;
+  }
+
+  public Async<Block> allocAsync(int size) {
+    Async<Block> a = new Async();
+    ForkJoinPool.commonPool().submit(a.exec(()->allocate(size)));
+    return a;
   }
 
   @Override
   public Volume release(Block blk) {
-    
+    return release(blk.offset());
   }
 
   @Override
-  public Volume release(int offset) {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+  public Volume release(long offset) {
+    long nextOffset = offset;
+    while(nextOffset > 0) {
+      OffsetBuffer buf = getOffsetBuffer(nextOffset);
+      cache.remove(nextOffset);
+      freebufs.add(nextOffset);
+      nextOffset = getNextOffset(buf);
+    }
+    return this;
   }
-
+  
   @Override
-  public Block get(int offset) {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+  public Block get(long offset) {
+    if(offset < 0 || offset > Unchecked.call(()->channel.size())) {
+      throw new IllegalArgumentException("Bad offset: " + offset);
+    }
+    List<ByteBuffer> bufs = new LinkedList<>();
+    OffsetBuffer buf = null;
+    long nextOffset = offset;
+    while(nextOffset >= 0) {
+      buf = getOffsetBuffer(nextOffset);
+      nextOffset = getNextOffset(buf);
+      bufs.add(slicedBuffer(buf));
+    }
+    BinBuffer bb = new DefaultBinBuffer(innerAllocator(buf), bufs);
+    return Block.of(this, bb, offset);
+  }
+  
+  public Async<Block> getAsync(long offset) {
+    Async<Block> a = new Async<>();
+    ForkJoinPool.commonPool().submit(a.exec(()->get(offset)));
+    return a;
   }
 
   @Override
   public Block metadata() {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    Block b;
+    if(metaidx.get() > 0) {
+      b = get(metaidx.get());
+    }
+    else {
+      b = allocate();
+      metaidx.set(b.offset());
+    }
+    return b;
+  }
+
+  public Async<Block> metadataAsync() {
+    Async<Block> a = new Async<>();
+    ForkJoinPool.commonPool().submit(a.exec(()->metadata()));
+    return a;
   }
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    Block b = get(0);
+    b.buffer().put(METADATA_ID);
+    b.buffer().putLong(woffset.get());
+    b.buffer().putLong(metaidx.get());
+    b.buffer().putInt(freebufs.size());
+    for(long offset : freebufs) {
+      b.buffer().putLong(offset);
+    }
+    b.commit();
   }
 
   @Override
@@ -199,7 +283,22 @@ public class FileVolume implements Volume {
 
   @Override
   public Volume commit(Block b) {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    long nextOffset = b.offset();
+    while(nextOffset >= 0) {
+      OffsetBuffer buf = getOffsetBuffer(nextOffset);
+      Unchecked.call(()->channel.write(buf.buffer().clear(), buf.offset()));
+      nextOffset = getNextOffset(buf);
+    }
+    return this;
   }
-
+  
+  public Async<Block> commitAsync(Block b) {
+    Async<Block> a = new Async<>();
+    ForkJoinPool.commonPool().submit(a.exec(()->{
+      commit(b);
+      return b;
+    }));
+    return a;
+  }
+  
 }

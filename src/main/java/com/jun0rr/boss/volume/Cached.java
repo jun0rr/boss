@@ -26,6 +26,10 @@ public class Cached<T> implements Comparable<Cached> {
     this.time = Instant.now();
   }
   
+  public static <U> Cached<U> of(U cont) {
+    return new Cached(cont);
+  }
+  
   public T content() {
     count.incrementAndGet();
     return content;

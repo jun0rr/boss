@@ -94,7 +94,7 @@ public class OffsetBinBuffer2 implements BinBuffer {
 
   @Override
   public BinBuffer duplicate() {
-    return new OffsetBinBuffer2(malloc, offsets, buffer.slice());
+    return new OffsetBinBuffer2(malloc, offsets, buffer.duplicate());
   }
   
   @Override

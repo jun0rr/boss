@@ -23,6 +23,14 @@ public record OffsetBuffer(long offset, ByteBuffer buffer) implements Comparable
     return Long.compare(offset, o.offset);
   }
   
+  public OffsetBuffer with(ByteBuffer bb) {
+    return of(offset, bb);
+  }
+  
+  public OffsetBuffer with(long offset) {
+    return of(offset, buffer);
+  }
+  
   private static final AtomicLong INC_OFFSET = new AtomicLong(1L);
   
   public static OffsetBuffer of(ByteBuffer buffer) {

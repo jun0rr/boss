@@ -182,10 +182,10 @@ public class DefaultVolume implements Volume {
   }
 
   @Override
-  public Volume release(int offset) {
+  public Volume release(long offset) {
     System.out.printf("DefaultVolume.release(%d)%n", offset);
     metaidx.compareAndSet(offset, -1);
-    int nos = offset;
+    long nos = offset;
     do {
       OffsetBuffer1 buf = getOffsetBuffer(nos);
       nos = buf.buffer().position(0).getInt();

@@ -20,9 +20,9 @@ public interface Volume extends AutoCloseable {
   
   public Volume release(Block blk);
   
-  public Volume release(int offset);
+  public Volume release(long offset);
   
-  public Block get(int offset);
+  public Block get(long offset);
   
   public Block metadata();
   
