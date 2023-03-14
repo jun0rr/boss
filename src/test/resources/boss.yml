@@ -1,13 +1,11 @@
 volume:
   id: TestObjectStore
+  store_path: ./
   buffer:
     size: 1K
     #{heap|direct}
     type: direct
     max_cache_size: 4G
-  store:
-    path: ./
-    sync: true
 mapper:
   construct:
     - com.jun0rr.binj.mapping.DefaultConstructStrategy

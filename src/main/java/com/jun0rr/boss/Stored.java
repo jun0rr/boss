@@ -4,24 +4,14 @@
  */
 package com.jun0rr.boss;
 
-import com.jun0rr.boss.store.DefaultStored;
-import com.jun0rr.boss.store.DefaultStored;
-
 /**
  *
  * @author F6036477
  */
-public interface Stored<T> {
+public record Stored<T>(long id, long offset, T object) {
   
-  public long id();
-  
-  public int offset();
-  
-  public T object();
-  
-  
-  public static <U> Stored<U> of(long id, int idx, U obj) {
-    return new DefaultStored(id, idx, obj);
+  public static <U> Stored<U> of(long id, long offset, U obj) {
+    return new Stored(id, offset, obj);
   }
   
 }

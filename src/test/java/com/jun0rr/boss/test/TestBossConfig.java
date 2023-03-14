@@ -32,8 +32,7 @@ public class TestBossConfig {
     Assertions.assertEquals(1024, bc.volume().buffer().size());
     Assertions.assertEquals(4 * Math.round(Math.pow(1024, 3)), bc.volume().buffer().maxCacheSize());
     Assertions.assertEquals(BufferConfig.Type.DIRECT, bc.volume().buffer().type());
-    Assertions.assertEquals(Paths.get("./"), bc.volume().store().path());
-    Assertions.assertEquals(true, bc.volume().store().sync());
+    Assertions.assertEquals(Paths.get("./"), bc.volume().storePath());
     List<Class> cl = List.of(DefaultConstructStrategy.class, AnnotationConstructStrategy.class);
     Assertions.assertTrue(bc.mapper().construct().stream().map(Object::getClass).allMatch(c->cl.stream().anyMatch(d->c==d)));
     List<Class> el = List.of(FieldGetterStrategy.class, AnnotationExtractStrategy.class);

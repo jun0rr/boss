@@ -52,14 +52,17 @@ public class FileVolume implements Volume {
   
   public FileVolume(VolumeConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
+    if(config.storePath() == null) {
+      throw new IllegalArgumentException("No store path defined (VolumeConfig.storePath(): Path)");
+    }
     this.malloc = config.buffer().bufferAllocator();
     this.cache = new ConcurrentSkipListMap<>();
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.woffset = new AtomicLong(config.buffer().size());
     this.metaidx = new AtomicLong(-1L);
     try {
-      this.loaded = Files.exists(config.store().path());
-      this.channel = FileChannel.open(config.store().path(), 
+      this.loaded = Files.exists(config.storePath());
+      this.channel = FileChannel.open(config.storePath(), 
           StandardOpenOption.CREATE, 
           StandardOpenOption.READ,
           StandardOpenOption.WRITE,
@@ -81,6 +84,7 @@ public class FileVolume implements Volume {
         int size = b.buffer().getInt();
         IntStream.range(0, size)
             .forEach(i->freebufs.add(b.buffer().getLong()));
+        System.out.printf("Volume.loadMetadata: woffset=%d, metaidx=%d, freebufs=%s%n", woffset.get(), metaidx.get(), freebufs);
       }
     }
   }
@@ -218,13 +222,13 @@ public class FileVolume implements Volume {
     List<ByteBuffer> bufs = new LinkedList<>();
     OffsetBuffer buf = null;
     long nextOffset = offset;
-    while(nextOffset >= 0) {
+    do {
       buf = getOffsetBuffer(nextOffset);
       nextOffset = getNextOffset(buf);
       System.out.printf("Volume.get( %d ): nextOffset=%d%n", offset, nextOffset);
       bufs.add(slicedBuffer(buf));
-      if(nextOffset == offset) break;
     }
+    while(nextOffset > 0 && nextOffset != offset);
     BinBuffer bb = new DefaultBinBuffer(innerAllocator(buf), bufs);
     return Block.of(this, bb, offset);
   }
@@ -245,21 +249,15 @@ public class FileVolume implements Volume {
   @Override
   public void close() {
     Block b = get(0);
-    System.out.println("put metadata_id");
     b.buffer().put(METADATA_ID);
-    System.out.println("put woffset");
     b.buffer().putLong(woffset.get());
-    System.out.println("put metaidx");
     b.buffer().putLong(metaidx.get());
-    System.out.println("put freebufs.size");
     b.buffer().putInt(freebufs.size());
+    System.out.printf("Volume.close: woffset=%d, metaidx=%d, freebufs=%d%n", woffset.get(), metaidx.get(), freebufs.size());
     for(long offset : freebufs) {
-      System.out.println("put offset");
       b.buffer().putLong(offset);
     }
-    System.out.println("commit");
     b.commit();
-    System.out.println("close");
     Uncheck.call(()->channel.close());
   }
 
@@ -271,13 +269,13 @@ public class FileVolume implements Volume {
   @Override
   public Volume commit(Block b) {
     long nextOffset = b.offset();
-    while(nextOffset >= 0) {
+    do {
       OffsetBuffer buf = getOffsetBuffer(nextOffset);
       Uncheck.call(()->channel.write(buf.buffer().clear(), buf.offset()));
       nextOffset = getNextOffset(buf);
       System.out.println("Volume.commit: nextOffset=" + nextOffset);
-      if(nextOffset == b.offset()) break;
     }
+    while(nextOffset > 0 && nextOffset != b.offset());
     return this;
   }
   
