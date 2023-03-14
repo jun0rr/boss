@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>com.jun0rr</groupId>
-            <artifactId>unchecked</artifactId>
+            <artifactId>uncheck</artifactId>
             <version>1.0</version>
         </dependency>
         <dependency>

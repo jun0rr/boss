@@ -10,7 +10,7 @@ import com.jun0rr.binj.buffer.DefaultBinBuffer;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.VolumeConfig;
-import com.jun0rr.unchecked.Unchecked;
+import com.jun0rr.uncheck.Uncheck;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -23,7 +23,6 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
@@ -74,13 +73,15 @@ public class FileVolume implements Volume {
   }
   
   private void loadMetadata() {
-    Block b = get(0);
-    if(METADATA_ID == b.buffer().get()) {
-      woffset.set(b.buffer().getLong());
-      metaidx.set(b.buffer().getLong());
-      int size = b.buffer().getInt();
-      IntStream.range(0, size)
-          .forEach(i->freebufs.add(b.buffer().getLong()));
+    if(loaded) {
+      Block b = get(0);
+      if(METADATA_ID == b.buffer().get()) {
+        woffset.set(b.buffer().getLong());
+        metaidx.set(b.buffer().getLong());
+        int size = b.buffer().getInt();
+        IntStream.range(0, size)
+            .forEach(i->freebufs.add(b.buffer().getLong()));
+      }
     }
   }
 
@@ -105,13 +106,13 @@ public class FileVolume implements Volume {
   }
 
   private OffsetBuffer getOffsetBuffer(long offset) {
-    if(offset < 0 || offset > Unchecked.call(()->channel.size())) {
+    if(offset < 0) {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
     Cached<OffsetBuffer> ob = cache.get(offset);
     if(ob == null) {
       ByteBuffer bb = malloc.alloc();
-      Unchecked.call(()->channel.read(bb, offset));
+      Uncheck.call(()->channel.read(bb, offset));
       ob = putCached(OffsetBuffer.of(offset, bb));
     }
     return ob.content();
@@ -192,18 +193,6 @@ public class FileVolume implements Volume {
     return Block.of(this, bb, buf.offset());
   }
 
-  public Async<Block> allocAsync() {
-    Async<Block> a = new Async();
-    ForkJoinPool.commonPool().submit(a.exec(()->allocate()));
-    return a;
-  }
-
-  public Async<Block> allocAsync(int size) {
-    Async<Block> a = new Async();
-    ForkJoinPool.commonPool().submit(a.exec(()->allocate(size)));
-    return a;
-  }
-
   @Override
   public Volume release(Block blk) {
     return release(blk.offset());
@@ -223,7 +212,7 @@ public class FileVolume implements Volume {
   
   @Override
   public Block get(long offset) {
-    if(offset < 0 || offset > Unchecked.call(()->channel.size())) {
+    if(offset < 0 || offset > Uncheck.call(()->channel.size())) {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
     List<ByteBuffer> bufs = new LinkedList<>();
@@ -232,18 +221,14 @@ public class FileVolume implements Volume {
     while(nextOffset >= 0) {
       buf = getOffsetBuffer(nextOffset);
       nextOffset = getNextOffset(buf);
+      System.out.printf("Volume.get( %d ): nextOffset=%d%n", offset, nextOffset);
       bufs.add(slicedBuffer(buf));
+      if(nextOffset == offset) break;
     }
     BinBuffer bb = new DefaultBinBuffer(innerAllocator(buf), bufs);
     return Block.of(this, bb, offset);
   }
   
-  public Async<Block> getAsync(long offset) {
-    Async<Block> a = new Async<>();
-    ForkJoinPool.commonPool().submit(a.exec(()->get(offset)));
-    return a;
-  }
-
   @Override
   public Block metadata() {
     Block b;
@@ -257,28 +242,30 @@ public class FileVolume implements Volume {
     return b;
   }
 
-  public Async<Block> metadataAsync() {
-    Async<Block> a = new Async<>();
-    ForkJoinPool.commonPool().submit(a.exec(()->metadata()));
-    return a;
-  }
-
   @Override
   public void close() {
     Block b = get(0);
+    System.out.println("put metadata_id");
     b.buffer().put(METADATA_ID);
+    System.out.println("put woffset");
     b.buffer().putLong(woffset.get());
+    System.out.println("put metaidx");
     b.buffer().putLong(metaidx.get());
+    System.out.println("put freebufs.size");
     b.buffer().putInt(freebufs.size());
     for(long offset : freebufs) {
+      System.out.println("put offset");
       b.buffer().putLong(offset);
     }
+    System.out.println("commit");
     b.commit();
+    System.out.println("close");
+    Uncheck.call(()->channel.close());
   }
 
   @Override
   public boolean isLoaded() {
-    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    return loaded;
   }
 
   @Override
@@ -286,19 +273,12 @@ public class FileVolume implements Volume {
     long nextOffset = b.offset();
     while(nextOffset >= 0) {
       OffsetBuffer buf = getOffsetBuffer(nextOffset);
-      Unchecked.call(()->channel.write(buf.buffer().clear(), buf.offset()));
+      Uncheck.call(()->channel.write(buf.buffer().clear(), buf.offset()));
       nextOffset = getNextOffset(buf);
+      System.out.println("Volume.commit: nextOffset=" + nextOffset);
+      if(nextOffset == b.offset()) break;
     }
     return this;
-  }
-  
-  public Async<Block> commitAsync(Block b) {
-    Async<Block> a = new Async<>();
-    ForkJoinPool.commonPool().submit(a.exec(()->{
-      commit(b);
-      return b;
-    }));
-    return a;
   }
   
 }

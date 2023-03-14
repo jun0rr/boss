@@ -1,0 +1,66 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.jun0rr.boss.test;
+
+import com.jun0rr.boss.Block;
+import com.jun0rr.boss.config.BufferConfig;
+import com.jun0rr.boss.config.StoreConfig;
+import com.jun0rr.boss.config.VolumeConfig;
+import com.jun0rr.boss.volume.Async;
+import com.jun0rr.boss.volume.FileVolume;
+import com.jun0rr.uncheck.Uncheck;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+/**
+ *
+ * @author Juno
+ */
+public class TestFileVolume {
+  
+  @Test public void test() {
+    try {
+      Path p = Paths.get("./TestFileVolume.dat");
+      Uncheck.call(()->Files.deleteIfExists(p));
+      BufferConfig bc = new BufferConfig(BufferConfig.Type.DIRECT, 64, 1*1024*1024L);
+      System.out.println(bc);
+      StoreConfig sc = new StoreConfig(p, true);
+      System.out.println(sc);
+      VolumeConfig vc = new VolumeConfig("TestFileVolume", bc, sc);
+      System.out.println(vc);
+      FileVolume v = new FileVolume(vc);
+      Block b = v.allocate();
+      System.out.println("allocated: " + b);
+      for(int i = 0; i < 100; i++) {
+        b.buffer().putInt(i);
+        System.out.printf("putInt( %d ): %s%n", i, b);
+      }
+      System.out.println("commit: " + b);
+      Async<Block> a = Async.exec(()->b.commit())
+          .onComplete(c->System.out.println("async completed: " + c));
+      a.waitDone();
+      System.out.println("Volume.close()");
+      v.close();
+      
+      System.out.println("-----------------------------");
+      v = new FileVolume(vc);
+      Block c = v.get(64);
+      System.out.println(b);
+      for(int i = 0; i < 100; i++) {
+        int x = c.buffer().getInt();
+        System.out.printf("getInt( %d ): %d%n", i, x);
+        Assertions.assertEquals(i, x);
+      }
+      v.close();
+    }
+    catch(Throwable e) {
+      e.printStackTrace();
+      throw Uncheck.uncheck(e);
+    }
+  }
+  
+}

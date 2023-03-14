@@ -20,13 +20,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.jun0rr.boss.Block;
 import java.nio.MappedByteBuffer;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 /**
  *
  * @author F6036477
  */
-public class DefaultVolume implements Volume {
+public class DefaultVolume { /*implements Volume {
   
   public static final byte METADATA_ID = 55;
   
@@ -40,9 +41,9 @@ public class DefaultVolume implements Volume {
   
   private final Queue<OffsetBuffer1> freebufs;
   
-  private final AtomicInteger woffset;
+  private final AtomicLong woffset;
   
-  private final AtomicInteger metaidx;
+  private final AtomicLong metaidx;
   
   private final boolean loaded;
   
@@ -53,8 +54,8 @@ public class DefaultVolume implements Volume {
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = new CopyOnWriteArrayList<>(bufs);
     this.loaded = !buffers.isEmpty();
-    this.woffset = new AtomicInteger(blockSize);
-    this.metaidx = new AtomicInteger(-1);
+    this.woffset = new AtomicLong(blockSize);
+    this.metaidx = new AtomicLong(-1);
     loadFreebufs();
   }
   
@@ -64,8 +65,8 @@ public class DefaultVolume implements Volume {
     this.blockSize = blockSize;
     this.freebufs = new ConcurrentLinkedQueue<>();
     this.buffers = new CopyOnWriteArrayList<>();
-    this.woffset = new AtomicInteger(blockSize);
-    this.metaidx = new AtomicInteger(-1);
+    this.woffset = new AtomicLong(blockSize);
+    this.metaidx = new AtomicLong(-1);
     this.loaded = false;
   }
   
@@ -164,14 +165,14 @@ public class DefaultVolume implements Volume {
     OffsetBuffer1 buf = allocateFreeBuffer();
     BufferAllocator alloc = new DefaultBufferAllocator(blockSize - Integer.BYTES) {
       @Override
-      public ByteBuffer alloc(int size) {
+      public ByteBuffer alloc() {
         return allocateSlice(buf);
       }
     };
     List<ByteBuffer> bufs = new ArrayList<>();
     bufs.add(buf.buffer().position(Integer.BYTES).slice());
     BinBuffer buffer = new DefaultBinBuffer(alloc, bufs);
-    Block b = new DefaultBlock(this, buffer, buf.offset());
+    Block b = Block.of(this, buffer, buf.offset());
     //System.out.printf("Volume.allocate( %d ): block=%s, thread=%s%n", size, b, Thread.currentThread());
     return b;
   }
@@ -295,5 +296,5 @@ public class DefaultVolume implements Volume {
   public String toString() {
     return "Volume{" + "id=" + id + ", blockSize=" + blockSize + ", buffers=" + buffers.size() + ", freebufs=" + freebufs + ", woffset=" + woffset + ", loaded=" + loaded + '}';
   }
-  
+  */
 }

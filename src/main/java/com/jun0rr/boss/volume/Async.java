@@ -4,13 +4,17 @@
  */
 package com.jun0rr.boss.volume;
 
-import com.jun0rr.unchecked.Unchecked;
+import com.jun0rr.uncheck.Uncheck;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
+import com.jun0rr.uncheck.Uncheck.ThrowableSupplier;
+import com.jun0rr.uncheck.Uncheck.ThrowableRunner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -26,11 +30,17 @@ public class Async<T> {
   
   private final List<Consumer<Throwable>> errListeners;
   
+  private final List<Consumer<Async<T>>> doneListeners;
+  
+  private final CountDownLatch countdown;
+  
   public Async() {
     this.ref = new AtomicReference();
     this.err = new AtomicReference();
     this.listeners = new CopyOnWriteArrayList<>();
     this.errListeners = new CopyOnWriteArrayList<>();
+    this.doneListeners = new CopyOnWriteArrayList<>();
+    this.countdown = new CountDownLatch(1);
   }
   
   public boolean isCompleted() {
@@ -62,12 +72,12 @@ public class Async<T> {
   
   private void completed(T val) {
     listeners.forEach(c->c.accept(val));
-    ref.notify();
+    countdown.countDown();
   }
   
   private void failed(Throwable val) {
     errListeners.forEach(c->c.accept(val));
-    ref.notify();
+    countdown.countDown();
   }
   
   public Async<T> fail(Throwable val) {
@@ -89,6 +99,15 @@ public class Async<T> {
     return this;
   }
   
+  public Async<T> onDone(Consumer<Async<T>> lst) {
+    this.doneListeners.add(lst);
+    if(isDone()) {
+      doneListeners.forEach(c->c.accept(this));
+      countdown.countDown();
+    }
+    return this;
+  }
+  
   public <U> Async<U> map(Function<T,U> fn) {
     Async<U> a = new Async();
     onComplete(v->a.complete(fn.apply(v)));
@@ -97,24 +116,40 @@ public class Async<T> {
   }
   
   public Async<T> waitDone() {
-    Unchecked.call(()->ref.wait());
+    Uncheck.call(()->countdown.await());
     return this;
   }
   
-  public Async<T> waitDone(long millis) {
-    Unchecked.call(()->ref.wait(millis));
+  public Async<T> waitDone(long millis, TimeUnit unit) {
+    Uncheck.call(()->countdown.await(millis, unit));
     return this;
   }
   
-  public Runnable exec(Supplier<T> su) {
-    return ()->{
+  public static <U> Async<U> exec(ThrowableSupplier<U> su) {
+    Async<U> a = new Async();
+    ForkJoinPool.commonPool().submit(()->{
       try {
-        complete(su.get());
+        a.complete(su.get());
       }
       catch(Throwable e) {
-        fail(e);
+        a.fail(e);
       }
-    };
+    });
+    return a;
+  }
+  
+  public static Async<Void> exec(ThrowableRunner rn) {
+    Async<Void> a = new Async();
+    ForkJoinPool.commonPool().submit(()->{
+      try {
+        rn.run();
+        a.complete(null);
+      }
+      catch(Throwable e) {
+        a.fail(e);
+      }
+    });
+    return a;
   }
   
 }
