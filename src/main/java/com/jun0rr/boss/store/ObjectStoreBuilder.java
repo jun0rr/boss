@@ -16,7 +16,7 @@ import com.jun0rr.binj.mapping.InvokeStrategy;
 import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.Volume;
-import com.jun0rr.boss.volume.DefaultVolume;
+import com.jun0rr.boss.volume.DefaultVolume2;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -291,7 +291,7 @@ public class ObjectStoreBuilder {
         bufs = ma.readBuffers();
         break;
     }
-    return new DefaultVolume(volid, blockSize, bufs, alloc);
+    return new DefaultVolume2(volid, blockSize, bufs, alloc);
   }
   
 }

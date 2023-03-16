@@ -5,10 +5,12 @@
 package com.jun0rr.boss.test;
 
 import com.jun0rr.boss.Block;
+import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.BufferConfig;
 import com.jun0rr.boss.config.VolumeConfig;
 import com.jun0rr.boss.volume.Async;
 import com.jun0rr.boss.volume.FileVolume;
+import com.jun0rr.boss.volume.FileVolume2;
 import com.jun0rr.uncheck.Uncheck;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,7 +30,7 @@ public class TestFileVolume {
       BufferConfig bc = new BufferConfig(BufferConfig.Type.DIRECT, 64, 1*1024*1024L);
       VolumeConfig vc = new VolumeConfig("TestFileVolume", bc, p);
       System.out.println(vc);
-      FileVolume v = new FileVolume(vc);
+      Volume v = new FileVolume2(vc);
       Block b = v.allocate(448);
       System.out.println("allocated: " + b);
       for(int i = 0; i < 100; i++) {
@@ -55,9 +57,9 @@ public class TestFileVolume {
       v.close();
       
       System.out.println("-----------------------------");
-      v = new FileVolume(vc);
+      v = new FileVolume2(vc);
       Block d = v.get(64);
-      System.out.println(b);
+      System.out.println(d);
       for(int i = 0; i < 100; i++) {
         int x = d.buffer().getInt();
         System.out.printf("getInt( %d ): %d%n", i, x);

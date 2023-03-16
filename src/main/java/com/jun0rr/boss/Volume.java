@@ -32,4 +32,9 @@ public interface Volume extends AutoCloseable {
   
   public Volume commit(Block b);
   
+  
+  public static Volume createVolume(VolumeConfig cfg) {
+    
+  }
+  
 }

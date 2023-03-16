@@ -25,6 +25,7 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import com.jun0rr.boss.Index;
+import com.jun0rr.boss.config.BossConfig;
 import java.util.LinkedList;
 import java.util.stream.Collectors;
 
@@ -34,13 +35,16 @@ import java.util.stream.Collectors;
  */
 public class DefaultObjectStore implements ObjectStore {
   
+  private final BossConfig config;
+  
   private final Volume volume;
   
   private final BinContext context;
   
   private final Index index;
   
-  public DefaultObjectStore(Volume v, BinContext c, Index i) {
+  public DefaultObjectStore(BossConfig cfg) {
+    this.config = Objects.requireNonNull(cfg);
     this.volume = Objects.requireNonNull(v);
     this.context = Objects.requireNonNull(c);
     this.index = Objects.requireNonNull(i);
