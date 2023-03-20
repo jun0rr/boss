@@ -10,7 +10,7 @@ import com.jun0rr.boss.config.BufferConfig;
 import com.jun0rr.boss.config.VolumeConfig;
 import com.jun0rr.boss.volume.Async;
 import com.jun0rr.boss.volume.FileVolume;
-import com.jun0rr.boss.volume.FileVolume2;
+import com.jun0rr.boss.volume.FileVolume;
 import com.jun0rr.uncheck.Uncheck;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,47 +30,49 @@ public class TestFileVolume {
       BufferConfig bc = new BufferConfig(BufferConfig.Type.DIRECT, 64, 1*1024*1024L);
       VolumeConfig vc = new VolumeConfig("TestFileVolume", bc, p);
       System.out.println(vc);
-      Volume v = new FileVolume2(vc);
+      Volume v = new FileVolume(vc);
       Block b = v.allocate(448);
-      System.out.println("allocated: " + b);
+      //System.out.println("allocated: " + b);
       for(int i = 0; i < 100; i++) {
         b.buffer().putInt(i);
-        System.out.printf("putInt( %d ): %s%n", i, b);
+        //System.out.printf("putInt( %d ): %s%n", i, b);
       }
-      System.out.println("commit: " + b);
+      //System.out.println("commit: " + b);
       Async<Block> a = Async.exec(()->b.commit())
           .onComplete(c->System.out.println("async completed: " + c));
-      a.waitDone();
+      //a.waitDone();
       
       Block c = v.metadata();
-      System.out.println("metadata: " + c);
+      //System.out.println("metadata: " + c);
       for(int i = 100; i < 125; i++) {
         c.buffer().putInt(i);
-        System.out.printf("metadata putInt( %d ): %s%n", i, c);
+        //System.out.printf("metadata putInt( %d ): %s%n", i, c);
       }
       a = Async.exec(()->c.commit())
           .onComplete(f->System.out.println("async completed: " + f));
       a.waitDone();
       
       v.release(448);
-      System.out.println("Volume.close()");
-      v.close();
+      //System.out.println("Volume.close()");
+      Volume v1 = v;
+      a.onDone(x->v1.close()).waitDone();
+      //v.close();
       
-      System.out.println("-----------------------------");
-      v = new FileVolume2(vc);
+      //System.out.println("-----------------------------");
+      v = new FileVolume(vc);
       Block d = v.get(64);
-      System.out.println(d);
+      //System.out.println(d);
       for(int i = 0; i < 100; i++) {
         int x = d.buffer().getInt();
-        System.out.printf("getInt( %d ): %d%n", i, x);
+        //System.out.printf("getInt( %d ): %d%n", i, x);
         Assertions.assertEquals(i, x);
       }
 
       Block e = v.metadata();
-      System.out.println("metadata: " + e);
+      //System.out.println("metadata: " + e);
       for(int i = 100; i < 125; i++) {
         int x = e.buffer().getInt();
-        System.out.printf("metadata getInt( %d ): %d%n", i, x);
+        //System.out.printf("metadata getInt( %d ): %d%n", i, x);
         Assertions.assertEquals(i, x);
       }
 

@@ -141,17 +141,20 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Block allocate(int size) {
-    OffsetBuffer buf = allocateOffsetBuffer();
-    int total = buf.buffer().capacity() - Long.BYTES;
+    OffsetBuffer first = allocateOffsetBuffer();
+    int total = first.buffer().capacity() - Long.BYTES;
     List<ByteBuffer> bufs = new LinkedList<>();
-    bufs.add(slicedBuffer(buf));
+    bufs.add(slicedBuffer(first));
+    OffsetBuffer buf = first;
     while(total < size) {
-      OffsetBuffer ob = allocateNextBuffer(buf);
-      total += ob.buffer().capacity() - Long.BYTES;
-      bufs.add(slicedBuffer(ob));
+      OffsetBuffer next = allocateOffsetBuffer();
+      setNextOffset(buf, next.offset());
+      total += next.buffer().capacity() - Long.BYTES;
+      bufs.add(slicedBuffer(next));
+      buf = next;
     }
-    BinBuffer bb = new DefaultBinBuffer(innerAllocator(buf), bufs);
-    return Block.of(this, bb, buf.offset());
+    BinBuffer bb = new DefaultBinBuffer(innerAllocator(first), bufs);
+    return Block.of(this, bb, first.offset());
   }
 
   @Override
@@ -168,7 +171,6 @@ public class DefaultVolume implements Volume {
       freebufs.add(nextOffset);
       nextOffset = getNextOffset(buf);
     }
-    System.out.printf("Volume.release( %d ): freebufs=%s%n", offset, freebufs);
     return this;
   }
   
@@ -183,7 +185,6 @@ public class DefaultVolume implements Volume {
     do {
       buf = getOffsetBuffer(nextOffset);
       nextOffset = getNextOffset(buf);
-      System.out.printf("Volume.get( %d ): nextOffset=%d%n", offset, nextOffset);
       bufs.add(slicedBuffer(buf));
     }
     while(nextOffset > 0 && nextOffset != offset);

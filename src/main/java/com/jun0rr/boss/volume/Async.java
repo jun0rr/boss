@@ -65,47 +65,42 @@ public class Async<T> {
   
   public Async<T> complete(T val) {
     if(ref.compareAndSet(null, val)) {
-      completed(val);
+      listeners.forEach(c->c.accept(val));
+      doneListeners.forEach(c->c.accept(this));
+      countdown.countDown();
     }
     return this;
   }
   
-  private void completed(T val) {
-    listeners.forEach(c->c.accept(val));
-    countdown.countDown();
-  }
-  
-  private void failed(Throwable val) {
-    errListeners.forEach(c->c.accept(val));
-    countdown.countDown();
-  }
-  
   public Async<T> fail(Throwable val) {
     if(err.compareAndSet(null, val)) {
-      failed(val);
+      errListeners.forEach(c->c.accept(val));
+      doneListeners.forEach(c->c.accept(this));
+      countdown.countDown();
     }
     return this;
   }
   
   public Async<T> onComplete(Consumer<T> lst) {
-    this.listeners.add(lst);
-    if(isCompleted()) completed(ref.get());
+    if(isCompleted()) lst.accept(ref.get());
+    else listeners.add(lst);
     return this;
   }
   
   public Async<T> onError(Consumer<Throwable> lst) {
-    this.errListeners.add(lst);
-    if(isFailed()) failed(err.get());
+    if(isFailed()) lst.accept(err.get());
+    else errListeners.add(lst);
     return this;
   }
   
   public Async<T> onDone(Consumer<Async<T>> lst) {
-    this.doneListeners.add(lst);
-    if(isDone()) {
-      doneListeners.forEach(c->c.accept(this));
-      countdown.countDown();
-    }
+    if(isDone()) lst.accept(this);
+    else doneListeners.add(lst);
     return this;
+  }
+  
+  public Async<T> join(Async<?> a) {
+    return onDone(x->a.waitDone());
   }
   
   public <U> Async<U> map(Function<T,U> fn) {
@@ -116,7 +111,9 @@ public class Async<T> {
   }
   
   public Async<T> waitDone() {
+    System.out.printf("Async.waitDone(1): countdown=%s%n", countdown);
     Uncheck.call(()->countdown.await());
+    System.out.printf("Async.waitDone(2): Done!%n");
     return this;
   }
   

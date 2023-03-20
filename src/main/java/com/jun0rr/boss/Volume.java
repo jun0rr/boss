@@ -5,6 +5,9 @@
 package com.jun0rr.boss;
 
 import com.jun0rr.boss.config.VolumeConfig;
+import com.jun0rr.boss.volume.DefaultVolume;
+import com.jun0rr.boss.volume.FileVolume;
+import java.util.Objects;
 
 /**
  *
@@ -34,7 +37,10 @@ public interface Volume extends AutoCloseable {
   
   
   public static Volume createVolume(VolumeConfig cfg) {
-    
+    Objects.requireNonNull(cfg);
+    return cfg.storePath() != null 
+        ? new FileVolume(cfg) 
+        : new DefaultVolume(cfg);
   }
   
 }
