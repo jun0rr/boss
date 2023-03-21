@@ -4,6 +4,9 @@
  */
 package com.jun0rr.boss.config;
 
+import com.jun0rr.boss.Volume;
+import com.jun0rr.boss.volume.DefaultVolume;
+import com.jun0rr.boss.volume.FileVolume;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -25,6 +28,12 @@ public record VolumeConfig(String id, BufferConfig buffer, Path storePath) {
       throw new BossConfigException("Bad null VolumeConfig.buffer");
     }
     return new VolumeConfig(id, BufferConfig.from(bc), (sp != null ? Paths.get(sp) : null));
+  }
+  
+  public Volume createVolume() {
+    return storePath != null 
+        ? new FileVolume(this) 
+        : new DefaultVolume(this);
   }
   
 }

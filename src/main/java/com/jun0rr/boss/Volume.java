@@ -35,12 +35,4 @@ public interface Volume extends AutoCloseable {
   
   public Volume commit(Block b);
   
-  
-  public static Volume createVolume(VolumeConfig cfg) {
-    Objects.requireNonNull(cfg);
-    return cfg.storePath() != null 
-        ? new FileVolume(cfg) 
-        : new DefaultVolume(cfg);
-  }
-  
 }

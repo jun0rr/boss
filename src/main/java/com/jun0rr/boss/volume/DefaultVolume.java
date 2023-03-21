@@ -164,6 +164,7 @@ public class DefaultVolume implements Volume {
 
   @Override
   public Volume release(long offset) {
+    metaidx.compareAndSet(offset, -1L);
     long nextOffset = offset;
     while(nextOffset > 0) {
       OffsetBuffer buf = getOffsetBuffer(nextOffset);

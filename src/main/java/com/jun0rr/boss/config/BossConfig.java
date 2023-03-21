@@ -17,6 +17,7 @@ import java.util.Map;
 public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
 
   public static BossConfig from(Map map) {
+    System.out.printf("BossConfig.from: %s%n", map);
     Map vc = (Map) map.get("volume");
     if(vc == null) {
       throw new BossConfigException("Bad null BossConfig.volume");

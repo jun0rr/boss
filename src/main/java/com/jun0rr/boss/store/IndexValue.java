@@ -4,63 +4,10 @@
  */
 package com.jun0rr.boss.store;
 
-import com.jun0rr.binj.mapping.Binary;
-import java.util.Objects;
-
 /**
  *
  * @author F6036477
  */
-public class IndexValue {
-  
-  private final Object value;
-  
-  private final int index;
-  
-  public IndexValue(Object value, int index) {
-    this.value = Objects.requireNonNull(value);
-    this.index = index;
-  }
-
-  @Binary
-  public Object value() {
-    return value;
-  }
-
-  @Binary
-  public int index() {
-    return index;
-  }
-
-  @Override
-  public int hashCode() {
-    int hash = 7;
-    hash = 83 * hash + Objects.hashCode(this.value);
-    hash = 83 * hash + this.index;
-    return hash;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final IndexValue other = (IndexValue) obj;
-    if (this.index != other.index) {
-      return false;
-    }
-    return Objects.equals(this.value, other.value);
-  }
-
-  @Override
-  public String toString() {
-    return "IndexValue{" + "value=" + value + ", index=" + index + '}';
-  }
+public record IndexValue(long offset, Object value) {
   
 }

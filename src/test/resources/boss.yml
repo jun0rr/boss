@@ -17,3 +17,10 @@ mapper:
     - com.jun0rr.binj.mapping.AnnotationInjectStrategy
     - com.jun0rr.binj.mapping.SetterStrategy
     - com.jun0rr.binj.mapping.FieldSetterStrategy
+  codecs:
+    - type: com.jun0rr.boss.store.Index
+      codec: com.jun0rr.binj.codec.ObjectCodec
+    - type: com.jun0rr.boss.store.IndexType
+      codec: com.jun0rr.binj.codec.ObjectCodec
+    - type: com.jun0rr.boss.store.IndexValue
+      codec: com.jun0rr.binj.codec.ObjectCodec

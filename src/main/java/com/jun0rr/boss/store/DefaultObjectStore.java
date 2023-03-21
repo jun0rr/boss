@@ -45,19 +45,12 @@ public class DefaultObjectStore implements ObjectStore {
   
   public DefaultObjectStore(BossConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
-    this.volume = Objects.requireNonNull(v);
-    this.context = Objects.requireNonNull(c);
-    this.index = Objects.requireNonNull(i);
+    this.volume = config.volume().createVolume();
+    this.context = config.mapper().createBinContext();
+    this.index = new Index();
     load();
   }
 
-  public DefaultObjectStore(Volume v,BinContext c) {
-    this.volume = Objects.requireNonNull(v);
-    this.context = Objects.requireNonNull(c);
-    this.index = new DefaultIndex();
-    load();
-  }
-  
   private void load() {
     if(volume.isLoaded()) {
       Block b = volume.metadata();
@@ -97,18 +90,14 @@ public class DefaultObjectStore implements ObjectStore {
     ContextEvent evt = context.write(b.buffer().position(Long.BYTES), o);
     System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
     b.buffer().position(0).putLong(evt.checksum());
+    b.commit();
     storeIndex(o, b, evt);
     return Stored.of(evt.checksum(), b.offset(), o);
   }
   
   private synchronized void storeIndex(Object o, Block b, ContextEvent evt) {
-    index.idIndex().put(evt.checksum(), b.offset());
-    List<Integer> is = index.classIndex().get(evt.codec().bintype());
-    if(is == null) {
-      is = new CopyOnWriteArrayList<>();
-      index.classIndex().put(evt.codec().bintype(), is);
-    }
-    is.add(b.offset());
+    index.putIndex(evt.checksum(), b.offset());
+    index.putIndex(evt.codec().bintype(), b.offset());
     index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
         .forEach(e->updateValueIndex(o, b, e));
@@ -125,12 +114,12 @@ public class DefaultObjectStore implements ObjectStore {
         .findFirst().get().extract(val);
       //System.out.println("ObjectStore.updateValueIndex(): val=" + val);
     }
-    entry.getValue().add(new IndexValue(val, b.offset()));
+    entry.getValue().add(new IndexValue(b.offset(), val));
   }
   
   @Override
   public <T> Optional<Stored<T>> get(long id) {
-    Integer idx = index.idIndex().get(id);
+    Long idx = index.idIndex().get(id);
     if(idx == null) {
       return Optional.empty();
     }

@@ -4,6 +4,7 @@
  */
 package com.jun0rr.boss.config;
 
+import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.mapping.ConstructFunction;
 import com.jun0rr.binj.mapping.ExtractFunction;
 import com.jun0rr.binj.mapping.InjectFunction;
@@ -21,10 +22,11 @@ import java.util.stream.Collectors;
 public record MapperConfig(
     List<InvokeStrategy<ConstructFunction>> construct, 
     List<InvokeStrategy<ExtractFunction>> extract, 
-    List<InvokeStrategy<InjectFunction>> inject
+    List<InvokeStrategy<InjectFunction>> inject,
+    List<CodecConfig> codecs
 ) {
   
-  private static Class ofClassName(String name) {
+  public static Class ofClassName(String name) {
     try {
       return Class.forName(name);
     }
@@ -65,7 +67,22 @@ public record MapperConfig(
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<InjectFunction>)f)
         .collect(Collectors.toList());
-    return new MapperConfig(construct, extract, inject);
+    List<Map> ts = (List) map.get("codecs");
+    List<CodecConfig> codecs = ts == null ? Collections.EMPTY_LIST : ts.stream()
+        .map(CodecConfig::from)
+        .collect(Collectors.toList());
+    return new MapperConfig(construct, extract, inject, codecs);
+  }
+  
+  public BinContext createBinContext() {
+    BinContext ctx = BinContext.newContext();
+    ctx.mapper().constructStrategies().addAll(construct);
+    ctx.mapper().extractStrategies().addAll(extract);
+    ctx.mapper().injectStrategies().addAll(inject);
+    codecs.stream()
+        .map(c->c.createCodec(ctx))
+        .forEach(c->ctx.codecs().put(c.bintype(), c));
+    return ctx;
   }
   
 }
