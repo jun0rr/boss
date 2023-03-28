@@ -25,6 +25,8 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import com.jun0rr.boss.Index;
+import com.jun0rr.boss.Index.IndexType;
+import com.jun0rr.boss.Index.IndexValue;
 import com.jun0rr.boss.config.BossConfig;
 import java.util.LinkedList;
 import java.util.stream.Collectors;
@@ -75,6 +77,7 @@ public class DefaultObjectStore implements ObjectStore {
       index.classIndex().putAll(i.classIndex());
       index.idIndex().putAll(i.idIndex());
       index.valueIndex().putAll(i.valueIndex());
+      System.out.println(index);
       volume.release(b);
     }
   }
@@ -100,10 +103,10 @@ public class DefaultObjectStore implements ObjectStore {
     index.putIndex(evt.codec().bintype(), b.offset());
     index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
-        .forEach(e->updateValueIndex(o, b, e));
+        .forEach(e->insertValueIndex(o, b, e));
   }
   
-  private void updateValueIndex(Object val, Block b, Entry<IndexType, List<IndexValue>> entry) {
+  private void insertValueIndex(Object val, Block b, Entry<IndexType, List<IndexValue>> entry) {
     List<String> names = List.of(entry.getKey().name().split("\\."));
     //System.out.printf("ObjectStore.updateValueIndex(%s): names=%s%n", entry.getKey().name(), names);
     for(String name : names) {
@@ -142,7 +145,7 @@ public class DefaultObjectStore implements ObjectStore {
 
   @Override
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p) {
-    return index.findByType(c).mapToObj(volume::get)
+    return index.findIndexByType(c).mapToObj(volume::get)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
         .peek(System.out::println)
         .filter(s->p.test(s.object()));
@@ -150,7 +153,7 @@ public class DefaultObjectStore implements ObjectStore {
 
   @Override
   public <T, V> Stream<Stored<T>> find(Class<T> c, String name, V v) {
-    return index.findByValue(c, name, v)
+    return index.findIndexByValue(c, name, v)
         .mapToObj(volume::get)
         .peek(System.out::println)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())));
@@ -158,7 +161,7 @@ public class DefaultObjectStore implements ObjectStore {
 
   @Override
   public <T> Optional<Stored<T>> delete(long id) {
-    Integer idx = index.idIndex().remove(id);
+    Long idx = index.idIndex().remove(id);
     if(idx == null) {
       return Optional.empty();
     }
@@ -179,7 +182,7 @@ public class DefaultObjectStore implements ObjectStore {
         .filter(e->e.getKey().isTypeOf(c))
         .map(Entry::getValue)
         .findFirst()
-        .ifPresent(l->l.remove(Integer.valueOf(s.offset()))))
+        .ifPresent(l->l.remove(s.offset())))
         .peek(s->index.idIndex().remove(s.id()))
         .peek(this::removeValueIndex)
         .peek(s->volume.release(s.offset()));
@@ -202,7 +205,6 @@ public class DefaultObjectStore implements ObjectStore {
         final Object vl = val;
         e.getValue().stream()
             .filter(v->v.value().equals(vl))
-            .collect(Collectors.toList())
             .forEach(e.getValue()::remove);
       }
     }
@@ -212,10 +214,10 @@ public class DefaultObjectStore implements ObjectStore {
   public <T, R> void createIndex(Class<T> c, String name, Function<T, R> fn) {
     IndexType t = new IndexType(context.getBinType(c), name);
     List<IndexValue> ls = new CopyOnWriteArrayList<>();
-    index.findByType(c)
+    index.findIndexByType(c)
         .mapToObj(volume::get)
         .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
-        .map(s->new IndexValue(fn.apply((T)s.object()), s.offset()))
+        .map(s->new IndexValue(s.offset(), fn.apply((T)s.object())))
         .forEach(ls::add);
     index.valueIndex().put(t, ls);
   }
@@ -227,14 +229,16 @@ public class DefaultObjectStore implements ObjectStore {
   
   @Override
   public void close() {
-    Block b = volume.metadata();
-    List<BinType> types = new LinkedList<>();
-    context.codecs().keySet().stream()
-        .filter(t->!BinCodec.DEFAULT_BINTYPES.contains(t))
-        .forEach(types::add);
-    context.write(b.buffer(), types);
-    context.write(b.buffer(), index);
-    volume.close();
+    try (volume) {
+      Block b = volume.metadata();
+      List<BinType> types = new LinkedList<>();
+      context.codecs().keySet().stream()
+          .filter(t->!BinCodec.DEFAULT_BINTYPES.contains(t))
+          .forEach(types::add);
+      context.write(b.buffer(), types);
+      context.write(b.buffer(), index);
+      b.commit();
+    }
   }
 
   @Override

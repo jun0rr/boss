@@ -29,7 +29,7 @@ public class TestFileVolumeConcurrent {
       BufferConfig bc = new BufferConfig(BufferConfig.Type.DIRECT, 64, 1*1024*1024L);
       VolumeConfig vc = new VolumeConfig("TestFileVolume", bc, p);
       System.out.println(vc);
-      Volume v1 = Volume.createVolume(vc);
+      Volume v1 = vc.createVolume();
       
       Async<Block> put1 = Async.exec(()->{
         Block b = v1.allocate(448);

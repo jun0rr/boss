@@ -5,11 +5,13 @@
 package com.jun0rr.boss.config;
 
 import com.jun0rr.binj.BinContext;
+import com.jun0rr.binj.mapping.CombinedStrategy;
 import com.jun0rr.binj.mapping.ConstructFunction;
 import com.jun0rr.binj.mapping.ExtractFunction;
 import com.jun0rr.binj.mapping.InjectFunction;
 import com.jun0rr.binj.mapping.InvokeStrategy;
 import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
+import com.jun0rr.indexed.Indexed;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +22,9 @@ import java.util.stream.Collectors;
  * @author F6036477
  */
 public record MapperConfig(
-    List<InvokeStrategy<ConstructFunction>> construct, 
-    List<InvokeStrategy<ExtractFunction>> extract, 
-    List<InvokeStrategy<InjectFunction>> inject,
+    InvokeStrategy<ConstructFunction> construct, 
+    InvokeStrategy<ExtractFunction> extract, 
+    InvokeStrategy<InjectFunction> inject,
     List<CodecConfig> codecs
 ) {
   
@@ -46,27 +48,33 @@ public record MapperConfig(
     }
     List<String> is = (List)map.get("inject");
     NoArgsConstructStrategy nc = new NoArgsConstructStrategy();
-    List<InvokeStrategy<ConstructFunction>> construct = cs.stream()
+    CombinedStrategy<ConstructFunction> construct = CombinedStrategy.newStrategy();
+    cs.stream()
         .map(MapperConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ConstructFunction>)f)
-        .collect(Collectors.toList());
-    List<InvokeStrategy<ExtractFunction>> extract = es.stream()
+        .map(Indexed.indexed())
+        .forEach(i->construct.put(i.index(), i.value()));
+    CombinedStrategy<ExtractFunction> extract = CombinedStrategy.newStrategy();
+    es.stream()
         .map(MapperConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ExtractFunction>)f)
-        .collect(Collectors.toList());
-    List<InvokeStrategy<InjectFunction>> inject = is == null || is.isEmpty() ? Collections.EMPTY_LIST : is.stream()
+        .map(Indexed.indexed())
+        .forEach(i->extract.put(i.index(), i.value()));
+    CombinedStrategy<InjectFunction> inject = CombinedStrategy.newStrategy();
+    ((List<String>)(is == null || is.isEmpty() ? Collections.EMPTY_LIST : is)).stream()
         .map(MapperConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<InjectFunction>)f)
-        .collect(Collectors.toList());
+        .map(Indexed.indexed())
+        .forEach(i->inject.put(i.index(), i.value()));
     List<Map> ts = (List) map.get("codecs");
     List<CodecConfig> codecs = ts == null ? Collections.EMPTY_LIST : ts.stream()
         .map(CodecConfig::from)
@@ -76,9 +84,9 @@ public record MapperConfig(
   
   public BinContext createBinContext() {
     BinContext ctx = BinContext.newContext();
-    ctx.mapper().constructStrategies().addAll(construct);
-    ctx.mapper().extractStrategies().addAll(extract);
-    ctx.mapper().injectStrategies().addAll(inject);
+    ctx.mapper().constructStrategies().add(construct);
+    ctx.mapper().extractStrategies().add(extract);
+    ctx.mapper().injectStrategies().add(inject);
     codecs.stream()
         .map(c->c.createCodec(ctx))
         .forEach(c->ctx.codecs().put(c.bintype(), c));

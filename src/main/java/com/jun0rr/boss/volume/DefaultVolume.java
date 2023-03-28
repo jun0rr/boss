@@ -217,5 +217,11 @@ public class DefaultVolume implements Volume {
   public boolean isLoaded() {
     return false;
   }
+
+
+  @Override
+  public String toString() {
+    return "Volume{" + "freebufs=" + freebufs + ", woffset=" + woffset + ", metaidx=" + metaidx + ", " + config + '}';
+  }
   
 }

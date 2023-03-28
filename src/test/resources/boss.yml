@@ -1,6 +1,6 @@
 volume:
   id: TestObjectStore
-  store_path: ./
+  store_path: ./TestObjectStore.bin
   buffer:
     size: 1K
     #{heap|direct}
@@ -8,19 +8,19 @@ volume:
     max_cache_size: 4G
 mapper:
   construct:
+    - com.jun0rr.binj.mapping.FieldsOrderConstructStrategy
     - com.jun0rr.binj.mapping.DefaultConstructStrategy
     - com.jun0rr.binj.mapping.AnnotationConstructStrategy
   extract:
+    - com.jun0rr.binj.mapping.GetterStrategy
     - com.jun0rr.binj.mapping.FieldGetterStrategy
     - com.jun0rr.binj.mapping.AnnotationExtractStrategy
   inject:
-    - com.jun0rr.binj.mapping.AnnotationInjectStrategy
     - com.jun0rr.binj.mapping.SetterStrategy
     - com.jun0rr.binj.mapping.FieldSetterStrategy
+    - com.jun0rr.binj.mapping.AnnotationInjectStrategy
   codecs:
-    - type: com.jun0rr.boss.store.Index
+    - type: com.jun0rr.boss.Index
       codec: com.jun0rr.binj.codec.ObjectCodec
-    - type: com.jun0rr.boss.store.IndexType
-      codec: com.jun0rr.binj.codec.ObjectCodec
-    - type: com.jun0rr.boss.store.IndexValue
-      codec: com.jun0rr.binj.codec.ObjectCodec
+    - type: com.jun0rr.boss.Index$IndexType
+    - type: com.jun0rr.boss.Index$IndexValue

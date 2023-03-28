@@ -5,8 +5,6 @@
 package com.jun0rr.boss;
 
 import com.jun0rr.binj.BinType;
-import com.jun0rr.boss.store.IndexType;
-import com.jun0rr.boss.store.IndexValue;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,6 +18,35 @@ import java.util.stream.LongStream;
  * @author F6036477
  */
 public record Index(Map<Long,Long> idIndex, Map<BinType,List<Long>> classIndex, Map<IndexType,List<IndexValue>> valueIndex) {
+  
+  public static record IndexType(BinType type, String name) implements Comparable<IndexType> {
+    @Override
+    public int compareTo(IndexType o) {
+      int r = this.type.compareTo(o.type);
+      if(r == 0) {
+        r = this.name.compareTo(o.name);
+      }
+      return r;
+    }
+  }
+  
+  public static record IndexValue(long offset, Object value) implements Comparable<IndexValue> {
+
+
+    @Override
+    public int compareTo(IndexValue o) {
+      int r = 0;
+      if(Comparable.class.isAssignableFrom(value.getClass())
+          && Comparable.class.isAssignableFrom(o.value.getClass())) {
+        r = ((Comparable)value).compareTo(o.value);
+      }
+      if(r == 0) {
+        r = Long.compare(offset, o.offset);
+      }
+      return r;
+    }
+  }
+
   
   public Index() {
     this(new ConcurrentSkipListMap<>(), new ConcurrentSkipListMap<>(), new ConcurrentSkipListMap<>());
@@ -67,11 +94,12 @@ public record Index(Map<Long,Long> idIndex, Map<BinType,List<Long>> classIndex, 
   public <T> Index removeIndex(BinType type, String name, long offset) {
     IndexType it = new IndexType(type, name);
     List<IndexValue> vs = valueIndex.get(it);
-    if(vs == null) {
-      vs = new CopyOnWriteArrayList<>();
-      valueIndex.put(it, vs);
+    if(vs != null) {
+      vs.stream()
+          .filter(i->i.offset() == offset)
+          .findFirst()
+          .ifPresent(vs::remove);
     }
-    vs.add(new IndexValue(offset, value));
     return this;
   }
   
@@ -81,7 +109,7 @@ public record Index(Map<Long,Long> idIndex, Map<BinType,List<Long>> classIndex, 
   
   public OptionalLong findIndexById(long id) {
     return idIndex().entrySet().stream()
-        .filter(e->e.getKey().longValue() == id)
+        .filter(e->e.getKey() == id)
         .map(Entry::getValue)
         .mapToLong(Long::longValue)
         .findFirst();

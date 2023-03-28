@@ -22,6 +22,11 @@ public record Block(Volume volume, BinBuffer buffer, long offset) implements Aut
     commit();
   }
   
+  @Override
+  public String toString() {
+    return String.format("Block{offset=%d, %s, %s}", offset, buffer, volume);
+  }
+  
   public static Block of(Volume v, BinBuffer b, long offset) {
     return new Block(v, b, offset);
   }

@@ -6,6 +6,8 @@ package com.jun0rr.boss.config;
 
 import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
+import com.jun0rr.boss.ObjectStore;
+import com.jun0rr.boss.store.DefaultObjectStore;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Map;

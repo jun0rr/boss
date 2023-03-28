@@ -7,13 +7,15 @@ package com.jun0rr.boss.config;
 import com.jun0rr.binj.BinCodec;
 import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.BinType;
-import com.jun0rr.uncheck.Uncheck;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
-import java.util.List;
+import com.jun0rr.binj.codec.ArrayCodec;
+import com.jun0rr.binj.codec.EnumCodec;
+import com.jun0rr.binj.codec.ObjectCodec;
+import com.jun0rr.binj.mapping.CombinedStrategy;
+import com.jun0rr.binj.mapping.ConstructFunction;
+import com.jun0rr.binj.mapping.NoArgsConstructStrategy;
+import com.jun0rr.binj.mapping.ParamTypesConstructStrategy;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
 
 /**
  *
@@ -23,57 +25,41 @@ public record CodecConfig(Class type, Class codec) {
   
   public BinCodec createCodec(BinContext ctx) {
     BinType bt = BinType.of(type);
-    List<Constructor> cts = List.of(codec.getDeclaredConstructors()).stream()
-        .filter(c->Modifier.isPublic(c.getModifiers()))
-        .toList();
-    Optional<Constructor> oct = cts.stream()
-        .filter(c->c.getParameterCount() == 0)
-        .findAny();
-    BinCodec codec = null;
-    if(oct.isPresent()) {
-      Constructor c = oct.get();
-      codec = (BinCodec) Uncheck.call(()->c.newInstance());
-    }
-    Predicate<Class> pred = c->BinType.class.isAssignableFrom(c) || BinContext.class.isAssignableFrom(c);
-    oct = cts.stream()
-        .filter(c->c.getParameterCount() == 1)
-        .filter(c->pred.test(c.getParameterTypes()[0]))
-        .findAny();
-    if(codec == null && oct.isPresent()) {
-      Constructor c = oct.get();
-      if(BinContext.class.isAssignableFrom(c.getParameterTypes()[0])) {
-        codec = (BinCodec) Uncheck.call(()->c.newInstance(ctx));
-      }
-      else {
-        codec = (BinCodec) Uncheck.call(()->c.newInstance(bt));
-      }
-    }
-    oct = cts.stream()
-        .filter(c->c.getParameterCount() == 2)
-        .filter(c->pred.test(c.getParameterTypes()[0]) || pred.test(c.getParameterTypes()[1]))
-        .findAny();
-    if(codec == null && oct.isPresent()) {
-      Constructor c = oct.get();
-      if(BinContext.class.isAssignableFrom(c.getParameterTypes()[0])) {
-        codec = (BinCodec) Uncheck.call(()->c.newInstance(ctx, bt));
-      }
-      else {
-        codec = (BinCodec) Uncheck.call(()->c.newInstance(bt, ctx));
-      }
-    }
-    if(codec == null) {
-      throw new IllegalStateException("Constructor not found for " + type);
-    }
-    return codec;
+    CombinedStrategy<ConstructFunction> construct = CombinedStrategy.newStrategy();
+    construct.put(0, new NoArgsConstructStrategy())
+        .put(1, new ParamTypesConstructStrategy());
+    Map<String,Object> args = new HashMap();
+    args.put(BinContext.class.getCanonicalName(), ctx);
+    args.put(BinType.class.getCanonicalName(), bt);
+    return construct.invokers(codec).stream()
+        .findFirst()
+        .get().create(args)
+        ;
   }
   
   public static CodecConfig from(Map map) {
     String st = (String) map.get("type");
     String sc = (String) map.get("codec");
-    if(st == null || sc == null) {
-      throw new IllegalArgumentException("Required keys ['type', 'codec'] not found in " + map);
+    if(st == null) {
+      throw new IllegalArgumentException("Required key ['type'] not found in " + map);
     }
-    return new CodecConfig(MapperConfig.ofClassName(st), MapperConfig.ofClassName(sc));
+    Class type = MapperConfig.ofClassName(st);
+    Class codec;
+    if(sc != null) {
+      codec = MapperConfig.ofClassName(sc);
+    }
+    else {
+      if(type.isEnum()) {
+        codec = EnumCodec.class;
+      }
+      else if(type.isArray()) {
+        codec = ArrayCodec.class;
+      }
+      else {
+        codec = ObjectCodec.class;
+      }
+    }
+    return new CodecConfig(type, codec);
   }
   
 }

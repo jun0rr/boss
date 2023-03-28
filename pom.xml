@@ -14,6 +14,11 @@
     <dependencies>
         <dependency>
             <groupId>com.jun0rr</groupId>
+            <artifactId>indexed</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.jun0rr</groupId>
             <artifactId>uncheck</artifactId>
             <version>1.0</version>
         </dependency>

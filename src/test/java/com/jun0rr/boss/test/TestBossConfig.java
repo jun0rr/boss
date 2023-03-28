@@ -5,17 +5,10 @@
 package com.jun0rr.boss.test;
 
 import com.esotericsoftware.yamlbeans.YamlException;
-import com.jun0rr.binj.mapping.AnnotationConstructStrategy;
-import com.jun0rr.binj.mapping.AnnotationExtractStrategy;
-import com.jun0rr.binj.mapping.AnnotationInjectStrategy;
-import com.jun0rr.binj.mapping.DefaultConstructStrategy;
-import com.jun0rr.binj.mapping.FieldGetterStrategy;
-import com.jun0rr.binj.mapping.FieldSetterStrategy;
-import com.jun0rr.binj.mapping.SetterStrategy;
+import com.jun0rr.binj.BinContext;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.config.BufferConfig;
 import java.nio.file.Paths;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
@@ -33,12 +26,10 @@ public class TestBossConfig {
     Assertions.assertEquals(4 * Math.round(Math.pow(1024, 3)), bc.volume().buffer().maxCacheSize());
     Assertions.assertEquals(BufferConfig.Type.DIRECT, bc.volume().buffer().type());
     Assertions.assertEquals(Paths.get("./"), bc.volume().storePath());
-    List<Class> cl = List.of(DefaultConstructStrategy.class, AnnotationConstructStrategy.class);
-    Assertions.assertTrue(bc.mapper().construct().stream().map(Object::getClass).allMatch(c->cl.stream().anyMatch(d->c==d)));
-    List<Class> el = List.of(FieldGetterStrategy.class, AnnotationExtractStrategy.class);
-    Assertions.assertTrue(bc.mapper().extract().stream().map(Object::getClass).allMatch(c->el.stream().anyMatch(d->c==d)));
-    List<Class> il = List.of(AnnotationInjectStrategy.class, SetterStrategy.class, FieldSetterStrategy.class);
-    Assertions.assertTrue(bc.mapper().inject().stream().map(Object::getClass).allMatch(c->il.stream().anyMatch(d->c==d)));
+    BinContext ctx = bc.mapper().createBinContext();
+    bc.mapper().codecs().stream()
+        .map(c->c.createCodec(ctx))
+        .forEach(System.out::println);
   }
   
 }
