@@ -25,7 +25,7 @@ public class TestBossConfig {
     Assertions.assertEquals(1024, bc.volume().buffer().size());
     Assertions.assertEquals(4 * Math.round(Math.pow(1024, 3)), bc.volume().buffer().maxCacheSize());
     Assertions.assertEquals(BufferConfig.Type.DIRECT, bc.volume().buffer().type());
-    Assertions.assertEquals(Paths.get("./"), bc.volume().storePath());
+    Assertions.assertEquals(Paths.get("./TestObjectStore.bin"), bc.volume().storePath());
     BinContext ctx = bc.mapper().createBinContext();
     bc.mapper().codecs().stream()
         .map(c->c.createCodec(ctx))
