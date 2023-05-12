@@ -9,8 +9,8 @@ import com.jun0rr.binj.BinContext;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.config.BufferConfig;
 import java.nio.file.Paths;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
  *

@@ -6,8 +6,6 @@ package com.jun0rr.boss.config;
 
 import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
-import com.jun0rr.boss.ObjectStore;
-import com.jun0rr.boss.store.DefaultObjectStore;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Map;
@@ -19,7 +17,7 @@ import java.util.Map;
 public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
 
   public static BossConfig from(Map map) {
-    System.out.printf("BossConfig.from: %s%n", map);
+    //System.out.printf("BossConfig.from: %s%n", map);
     Map vc = (Map) map.get("volume");
     if(vc == null) {
       throw new BossConfigException("Bad null BossConfig.volume");

@@ -56,7 +56,7 @@ public class FileVolume extends DefaultVolume {
         int size = b.buffer().getInt();
         IntStream.range(0, size)
             .forEach(i->freebufs.add(b.buffer().getLong()));
-        System.out.printf("Volume.loadMetadata: woffset=%d, metaidx=%d, freebufs=%s%n", woffset.get(), metaidx.get(), freebufs);
+        //System.out.printf("Volume.loadMetadata: woffset=%d, metaidx=%d, freebufs=%s%n", woffset.get(), metaidx.get(), freebufs);
       }
     }
   }
@@ -72,7 +72,7 @@ public class FileVolume extends DefaultVolume {
       Uncheck.call(()->channel.read(bb, offset));
       ob = putCached(OffsetBuffer.of(offset, bb));
     }
-    System.out.printf("FileVolume.getOffsetBuffer(%d): %s%n", offset, ob);
+    //System.out.printf("FileVolume.getOffsetBuffer(%d): %s%n", offset, ob);
     return ob.content();
   }
   
@@ -83,7 +83,7 @@ public class FileVolume extends DefaultVolume {
     b.buffer().putLong(woffset.get());
     b.buffer().putLong(metaidx.get());
     b.buffer().putInt(freebufs.size());
-    System.out.printf("Volume.close: woffset=%d, metaidx=%d, freebufs=%d%n", woffset.get(), metaidx.get(), freebufs.size());
+    //System.out.printf("Volume.close: woffset=%d, metaidx=%d, freebufs=%d%n", woffset.get(), metaidx.get(), freebufs.size());
     for(long offset : freebufs) {
       b.buffer().putLong(offset);
     }

@@ -4,11 +4,11 @@
  */
 package com.jun0rr.boss.test;
 
-import com.jun0rr.boss.test.record.Address;
-import com.jun0rr.boss.test.record.Person;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.store.DefaultObjectStore;
+import com.jun0rr.boss.test.record.Address;
+import com.jun0rr.boss.test.record.Person;
 import com.jun0rr.uncheck.Uncheck;
 import java.nio.file.Files;
 import java.nio.file.Path;

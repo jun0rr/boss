@@ -6,7 +6,6 @@ package com.jun0rr.boss.test;
 
 import com.jun0rr.boss.Index;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assertions;
 
 
 /**

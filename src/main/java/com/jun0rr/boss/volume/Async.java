@@ -5,16 +5,16 @@
 package com.jun0rr.boss.volume;
 
 import com.jun0rr.uncheck.Uncheck;
+import com.jun0rr.uncheck.Uncheck.ThrowableRunner;
+import com.jun0rr.uncheck.Uncheck.ThrowableSupplier;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import com.jun0rr.uncheck.Uncheck.ThrowableSupplier;
-import com.jun0rr.uncheck.Uncheck.ThrowableRunner;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -44,15 +44,15 @@ public class Async<T> {
   }
   
   public boolean isCompleted() {
-    return ref.get() != null;
+    return isDone() && err.get() == null;
   }
   
   public boolean isFailed() {
-    return err.get() != null;
+    return isDone() && err.get() != null;
   }
   
   public boolean isDone() {
-    return isCompleted() || isFailed();
+    return countdown.getCount() == 0;
   }
   
   public T get() {

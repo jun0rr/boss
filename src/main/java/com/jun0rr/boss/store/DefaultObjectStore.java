@@ -4,7 +4,6 @@
  */
 package com.jun0rr.boss.store;
 
-import com.jun0rr.boss.Stored;
 import com.jun0rr.binj.BinCodec;
 import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.BinType;
@@ -13,8 +12,14 @@ import com.jun0rr.binj.codec.ArrayCodec;
 import com.jun0rr.binj.codec.EnumCodec;
 import com.jun0rr.binj.codec.ObjectCodec;
 import com.jun0rr.boss.Block;
+import com.jun0rr.boss.Index;
+import com.jun0rr.boss.Index.IndexType;
+import com.jun0rr.boss.Index.IndexValue;
 import com.jun0rr.boss.ObjectStore;
+import com.jun0rr.boss.Stored;
 import com.jun0rr.boss.Volume;
+import com.jun0rr.boss.config.BossConfig;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -24,12 +29,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
-import com.jun0rr.boss.Index;
-import com.jun0rr.boss.Index.IndexType;
-import com.jun0rr.boss.Index.IndexValue;
-import com.jun0rr.boss.config.BossConfig;
-import java.util.LinkedList;
-import java.util.stream.Collectors;
 
 /**
  *
@@ -77,7 +76,7 @@ public class DefaultObjectStore implements ObjectStore {
       index.classIndex().putAll(i.classIndex());
       index.idIndex().putAll(i.idIndex());
       index.valueIndex().putAll(i.valueIndex());
-      System.out.println(index);
+      //System.out.println(index);
       volume.release(b);
     }
   }
@@ -91,7 +90,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T> Stored<T> store(T o) {
     Block b = volume.allocate();
     ContextEvent evt = context.write(b.buffer().position(Long.BYTES), o);
-    System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
+    //System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
     b.buffer().position(0).putLong(evt.checksum());
     b.commit();
     storeIndex(o, b, evt);
