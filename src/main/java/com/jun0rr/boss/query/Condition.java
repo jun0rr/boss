@@ -52,22 +52,22 @@ public interface Condition<T> {
     }
   }
   Possible tests:
-    - equals (eq), 
-    - nequals (ne): Not equals, 
-    - greater (gt): Greater then, 
-    - ngreater (ng): Not greater then, 
-    - greatereq (ge): Greater or equals, 
-    - lesser (lt): Lesser then, 
-    - nlesser (nl): Not lesser then, 
-    - lessereq (le): Lesser or equals, 
-    - between (bt): Between 2 values exclusive, 
-    - nbetween (nb): Not between 2 values exclusive, 
-    - betweeni (bi): Between 2 values inclusive,
-    - equalsi (ei): Equals ignore case,
-    - regex (rx): Regex expression,
-    - in (in): One of many,
-    - isnull (nu): Is a null value (not present),
-    - notnull (nn): Not a null value (is present),
+    - equals (eq);
+    - nequals (ne): Not equals;
+    - greater (gt): Greater then;
+    - ngreater (ng): Not greater then;
+    - greatereq (ge): Greater or equals;
+    - lesser (lt): Lesser then;
+    - nlesser (nl): Not lesser then;
+    - lessereq (le): Lesser or equals;
+    - between (bt): Between 2 values, exclusive;
+    - nbetween (nb): Not between 2 values, exclusive;
+    - betweeni (bi): Between 2 values, inclusive;
+    - equalsi (ei): Equals ignore case;
+    - regex (rx): Regex expression;
+    - in (in): One of many;
+    - isnull (nu): Is a null value (not present);
+    - notnull (nn): Not a null value (is present).
   */
   
 }
