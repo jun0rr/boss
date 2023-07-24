@@ -103,7 +103,7 @@ public class DefaultJsonStore implements JsonStore {
   }
   
   private synchronized void storeIndex(Object o, Block b, long sum) {
-    index.putIndex(evt.checksum(), b.offset());
+    index.putIndex(sum, b.offset());
     index.putIndex(evt.codec().bintype(), b.offset());
     index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().type().equals(evt.codec().bintype()))
