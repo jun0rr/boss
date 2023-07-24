@@ -15,10 +15,12 @@ import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Index;
 import com.jun0rr.boss.Index.IndexType;
 import com.jun0rr.boss.Index.IndexValue;
-import com.jun0rr.boss.ObjectStore;
+import com.jun0rr.boss.JsonIndex;
+import com.jun0rr.boss.JsonStore;
 import com.jun0rr.boss.Stored;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.BossConfig;
+import io.vertx.core.json.JsonObject;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -34,7 +36,7 @@ import java.util.stream.Stream;
  *
  * @author F6036477
  */
-public class DefaultObjectStore implements ObjectStore {
+public class DefaultJsonStore implements JsonStore {
   
   private final BossConfig config;
   
@@ -42,13 +44,13 @@ public class DefaultObjectStore implements ObjectStore {
   
   private final BinContext context;
   
-  private final Index index;
+  private final JsonIndex index;
   
-  public DefaultObjectStore(BossConfig cfg) {
+  public DefaultJsonStore(BossConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
     this.volume = config.volume().createVolume();
     this.context = config.mapper().createBinContext();
-    this.index = new Index();
+    this.index = new JsonIndex();
     load();
   }
 
@@ -85,19 +87,22 @@ public class DefaultObjectStore implements ObjectStore {
   public boolean isLoaded() {
     return volume.isLoaded();
   }
-
+  
   @Override
-  public <T> Stored<T> store(T o) {
+  public Stored<JsonObject> store(JsonObject o) {
     Block b = volume.allocate();
-    ContextEvent evt = context.write(b.buffer().position(Long.BYTES), o);
-    //System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
-    b.buffer().position(0).putLong(evt.checksum());
+    b.buffer().position(Long.BYTES)
+        .put(o.toBuffer().getBytes());
+    int lim = b.buffer().position();
+    long sum = b.buffer().position(Long.BYTES).limit(lim).checksum();
+    b.buffer().position(0).putLong(sum);
+    b.buffer().position(lim);
     b.commit();
-    storeIndex(o, b, evt);
-    return Stored.of(evt.checksum(), b.offset(), o);
+    storeIndex(o, b, sum);
+    return Stored.of(sum, b.offset(), o);
   }
   
-  private synchronized void storeIndex(Object o, Block b, ContextEvent evt) {
+  private synchronized void storeIndex(Object o, Block b, long sum) {
     index.putIndex(evt.checksum(), b.offset());
     index.putIndex(evt.codec().bintype(), b.offset());
     index.valueIndex().entrySet().stream()
@@ -259,7 +264,7 @@ public class DefaultObjectStore implements ObjectStore {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final DefaultObjectStore other = (DefaultObjectStore) obj;
+    final DefaultJsonStore other = (DefaultJsonStore) obj;
     if (!Objects.equals(this.volume, other.volume)) {
       return false;
     }

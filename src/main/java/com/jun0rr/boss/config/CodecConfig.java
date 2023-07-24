@@ -29,8 +29,8 @@ public record CodecConfig(Class type, Class codec) {
     construct.put(0, new NoArgsConstructStrategy())
         .put(1, new ParamTypesConstructStrategy());
     Map<String,Object> args = new HashMap();
-    args.put(BinContext.class.getCanonicalName(), ctx);
-    args.put(BinType.class.getCanonicalName(), bt);
+    args.put(BinContext.class.getName(), ctx);
+    args.put(BinType.class.getName(), bt);
     return construct.invokers(codec).stream()
         .findFirst()
         .get().create(args)

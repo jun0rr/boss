@@ -33,9 +33,9 @@
             <version>1.15</version>
         </dependency>
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.10.1</version>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>4.4.3</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
