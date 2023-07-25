@@ -2,8 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
  */
-package com.jun0rr.boss;
+package com.jun0rr.boss.json;
 
+import com.jun0rr.boss.Stored;
 import io.vertx.core.json.JsonObject;
 import java.io.Closeable;
 import java.util.Optional;
@@ -18,7 +19,7 @@ import java.util.stream.Stream;
  */
 public interface JsonStore extends Closeable {
   
-  public Stored<JsonObject> store(JsonObject o);
+  public Stored<JsonObject> store(String collection, JsonObject o);
   
   public Optional<Stored<JsonObject>> get(long id);
   

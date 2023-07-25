@@ -7,19 +7,20 @@ package com.jun0rr.boss.store;
 import com.jun0rr.binj.BinCodec;
 import com.jun0rr.binj.BinContext;
 import com.jun0rr.binj.BinType;
-import com.jun0rr.binj.ContextEvent;
 import com.jun0rr.binj.codec.ArrayCodec;
 import com.jun0rr.binj.codec.EnumCodec;
 import com.jun0rr.binj.codec.ObjectCodec;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Index;
 import com.jun0rr.boss.Index.IndexType;
-import com.jun0rr.boss.Index.IndexValue;
-import com.jun0rr.boss.JsonIndex;
-import com.jun0rr.boss.JsonStore;
+import com.jun0rr.boss.json.JsonIndex;
+import com.jun0rr.boss.json.JsonIndex.IndexCollection;
+import com.jun0rr.boss.json.JsonStore;
 import com.jun0rr.boss.Stored;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.BossConfig;
+import com.jun0rr.boss.json.JsonIndex.IndexValue;
+import com.jun0rr.boss.query.Either;
 import io.vertx.core.json.JsonObject;
 import java.util.LinkedList;
 import java.util.List;
@@ -89,7 +90,9 @@ public class DefaultJsonStore implements JsonStore {
   }
   
   @Override
-  public Stored<JsonObject> store(JsonObject o) {
+  public Stored<JsonObject> store(String collection, JsonObject o) {
+    Objects.requireNonNull(collection);
+    Objects.requireNonNull(o);
     Block b = volume.allocate();
     b.buffer().position(Long.BYTES)
         .put(o.toBuffer().getBytes());
@@ -98,28 +101,28 @@ public class DefaultJsonStore implements JsonStore {
     b.buffer().position(0).putLong(sum);
     b.buffer().position(lim);
     b.commit();
-    storeIndex(o, b, sum);
+    storeIndex(collection, o, sum, b);
     return Stored.of(sum, b.offset(), o);
   }
   
-  private synchronized void storeIndex(Object o, Block b, long sum) {
+  private synchronized void storeIndex(String collection, JsonObject o, long sum, Block b) {
     index.putIndex(sum, b.offset());
-    index.putIndex(evt.codec().bintype(), b.offset());
+    index.putIndex(collection, b.offset());
     index.valueIndex().entrySet().stream()
-        .filter(e->e.getKey().type().equals(evt.codec().bintype()))
-        .forEach(e->insertValueIndex(o, b, e));
+        .filter(e->e.getKey().collection().equals(collection))
+        .forEach(e->insertValueIndex(collection, o, b, e));
   }
   
-  private void insertValueIndex(Object val, Block b, Entry<IndexType, List<IndexValue>> entry) {
+  private void insertValueIndex(String collection, JsonObject o, Block b, Entry<IndexCollection, List<IndexValue>> entry) {
     List<String> names = List.of(entry.getKey().name().split("\\."));
-    //System.out.printf("ObjectStore.updateValueIndex(%s): names=%s%n", entry.getKey().name(), names);
+    Object val = o;
     for(String name : names) {
       final Class cls = val.getClass();
-      val = context.mapper().extractStrategies().stream()
-        .flatMap(s->s.invokers(cls).stream())
-        .filter(f->f.name().equals(name))
-        .findFirst().get().extract(val);
-      //System.out.println("ObjectStore.updateValueIndex(): val=" + val);
+      val = Either.of(val)
+          .ifIsNotNull()
+          .andIs(JsonObject.class)
+          .thenMap(j->j.getValue(name))
+          .a();
     }
     entry.getValue().add(new IndexValue(b.offset(), val));
   }
