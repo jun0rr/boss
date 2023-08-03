@@ -8,6 +8,6 @@ package com.jun0rr.boss.query;
  *
  * @author f6036477
  */
-public record Query(String collection, ) {
+public record Query(String collection) {
 
 }

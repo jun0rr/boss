@@ -4,10 +4,13 @@
  */
 package com.jun0rr.boss.json;
 
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.LongStream;
@@ -30,8 +33,6 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
   }
   
   public static record IndexValue(long offset, Object value) implements Comparable<IndexValue> {
-
-
     @Override
     public int compareTo(IndexValue o) {
       int r = 0;
@@ -130,6 +131,84 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
         .flatMap(List::stream)
         .filter(v->v.value().equals(value))
         .mapToLong(IndexValue::offset);
+  }
+  
+  public JsonObject toJson() {
+    JsonObject index = new JsonObject();
+    JsonArray ids = new JsonArray();
+    JsonArray collections = new JsonArray();
+    JsonArray values = new JsonArray();
+    idIndex.entrySet().stream()
+        .map(e->new JsonObject()
+            .put("id", e.getKey())
+            .put("offset", e.getValue()))
+        .forEach(ids::add);
+    index.put("ids", ids);
+    
+    for(Entry<String,List<Long>> e : collectionIndex.entrySet()) {
+      JsonObject o = new JsonObject();
+      o.put("collection", e.getKey());
+      JsonArray a = new JsonArray();
+      for(Long l : e.getValue()) {
+        a.add(l);
+      }
+      o.put("offsets", a);
+      collections.add(o);
+    }
+    index.put("collections", collections);
+    
+    for(Entry<IndexCollection,List<IndexValue>> e : valueIndex.entrySet()) {
+      JsonObject o = new JsonObject();
+      o.put("collection", e.getKey().collection());
+      o.put("name", e.getKey().name());
+      JsonArray a = new JsonArray();
+      for(IndexValue v : e.getValue()) {
+        JsonObject ov = new JsonObject();
+        ov.put("value", v.value());
+        ov.put("offset", v.offset());
+        a.add(ov);
+      }
+      o.put("values", a);
+      values.add(o);
+    }
+    index.put("values", values);
+    return index;
+  }
+  
+  public JsonIndex fromJson(JsonObject o) {
+    if(o.containsKey("ids")) {
+      JsonArray ids = o.getJsonArray("ids");
+      ids.stream()
+          .map(j->(JsonObject)j)
+          .forEach(j->putIndex(j.getLong("id"), j.getLong("offset")));
+    }
+    if(o.containsKey("collections")) {
+      JsonArray collections = o.getJsonArray("collections");
+      for(int i = 0; i < collections.size(); i++) {
+        JsonObject c = collections.getJsonObject(i);
+        JsonArray a = c.getJsonArray("offsets");
+        for(int j = 0; j < a.size(); j++) {
+          putIndex(c.getString("collection"), a.getLong(j));
+        }
+      }
+    }
+    if(o.containsKey("values")) {
+      JsonArray values = o.getJsonArray("values");
+      for(int i = 0; i < values.size(); i++) {
+        JsonObject oc = values.getJsonObject(i);
+        JsonArray a = oc.getJsonArray("values");
+        for(int j = 0; j < a.size(); j++) {
+          JsonObject ov = a.getJsonObject(j);
+          putIndex(
+              oc.getString("collection"), 
+              oc.getString("name"), 
+              ov.getValue("value"), 
+              ov.getLong("offset")
+          );
+        }
+      }
+    }
+    return this;
   }
   
 }

@@ -4,7 +4,8 @@
  */
 package com.jun0rr.boss.query;
 
-import com.google.gson.JsonObject;
+import io.vertx.core.json.JsonObject;
+
 
 /**
  *

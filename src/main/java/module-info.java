@@ -8,5 +8,5 @@ module Boss {
   requires jun0rr.uncheck;
   requires jun0rr.binj;
   requires yamlbeans;
-  requires com.google.gson;
+  requires io.vertx.core;
 }

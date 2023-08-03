@@ -17,10 +17,11 @@ public class TestEither {
   @Test public void test() {
     System.out.printf("------ test ------%n");
     //Object o = "Hello";
-    Object o = 50;
+    //Object o = 50;
+    Object o = false;
     Either.of(o)
         .peek(e->System.out.printf("=> %s%n", e))
-        .ifIsNotNull()
+        .ifNotNull()
         .peek(e->System.out.printf("=> if is not null: %s%n", e))
         .andIs(String.class)
         .peek(e->System.out.printf("=> and is a String: %s%n", e))
@@ -30,6 +31,9 @@ public class TestEither {
         .peek(e->System.out.printf("=> else map to Number: %s%n", e))
         .thenAccept(x->System.out.printf("=> '%s' is a Number!%n", x))
         .peek(e->System.out.printf("=> then accept: %s%n", e))
+        .onFail(t->System.out.printf("[WARN] %s%n", t))
+        .peek(e->System.out.printf("=> on fail: %s%n", e))
+        .printFail(3)
         ;
   }
   
@@ -39,7 +43,7 @@ public class TestEither {
     Object o = null;
     Either.of(o)
         .peek(e->System.out.printf("=> %s%n", e))
-        .ifIsNotNull()
+        .ifNotNull()
         .peek(e->System.out.printf("=> if is not null: %s%n", e))
         .andIs(String.class)
         .peek(e->System.out.printf("=> and is a String: %s%n", e))
@@ -47,7 +51,7 @@ public class TestEither {
         .peek(e->System.out.printf("=> then accept: %s%n", e))
         .elseNot()
         .peek(e->System.out.printf("=> else not: %s%n", e))
-        .ifIsNotNull()
+        .ifNotNull()
         .peek(e->System.out.printf("=> if is not null: %s%n", e))
         .andIs(Number.class)
         .peek(e->System.out.printf("=> and is a Number: %s%n", e))
@@ -65,7 +69,7 @@ public class TestEither {
     Assertions.assertThrows(IllegalArgumentException.class, ()->
         Either.of(o)
         .peek(e->System.out.printf("=> %s%n", e))
-        .ifIsNotNull()
+        .ifNotNull()
         .peek(e->System.out.printf("=> if is not null: %s%n", e))
         .andIs(Number.class)
         .peek(e->System.out.printf("=> and is a Number: %s%n", e))

@@ -4,26 +4,32 @@
  */
 package com.jun0rr.boss.query;
 
+import com.jun0rr.uncheck.Uncheck;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  *
  * @author F6036477
  */
-public record Either<A,B>(A a, B b, boolean passed) {
+public record Either<A,B>(A a, B b, Throwable error, boolean passed) {
 
+  public static <X,Y> Either<X,Y> of(X x, Y y, Throwable t, boolean passed) {
+    return new Either(x, y, t, passed);
+  }
+  
   public static <X,Y> Either<X,Y> of(X x, Y y, boolean passed) {
-    return new Either(x, y, passed);
+    return new Either(x, y, null, passed);
   }
   
   public static <X,Y> Either<X,Y> of(X x, Y y) {
-    return new Either(x, y, false);
+    return new Either(x, y, null, false);
   }
   
   public static <X> Either<X,X> of(X x) {
-    return new Either(x, x, false);
+    return new Either(x, x, null, false);
   }
   
   public boolean is(Predicate<A> p) {
@@ -36,6 +42,10 @@ public record Either<A,B>(A a, B b, boolean passed) {
   
   public boolean isNotNull() {
     return a != null;
+  }
+  
+  public boolean isFailed() {
+    return error != null;
   }
   
   public boolean and(Predicate<A> p) {
@@ -54,7 +64,7 @@ public record Either<A,B>(A a, B b, boolean passed) {
     return of(a, b, is(c)).thenMap(c);
   }
   
-  public Either<A,B> ifIsNotNull() {
+  public Either<A,B> ifNotNull() {
     return of(a, b, isNotNull());
   }
   
@@ -75,23 +85,43 @@ public record Either<A,B>(A a, B b, boolean passed) {
   }
   
   public <C> Either<C,B> thenMap(Function<A,C> f) {
-    C c = passed ? f.apply(a) : null;
-    return of(c, b, passed);
+    try {
+      C c = passed ? f.apply(a) : null;
+      return of(c, b, passed);
+    }
+    catch(Throwable t) {
+      return of(null, b, t, false);
+    }
   }
   
   public <C> Either<C,B> thenMap(Class<C> c) {
-    C x = passed ? c.cast(a) : null;
-    return of(x, b, passed);
+    try {
+      C x = passed ? c.cast(a) : null;
+      return of(x, b, passed);
+    }
+    catch(Throwable t) {
+      return of(null, b, t, false);
+    }
   }
   
   public <C> Either<C,A> elseMap(Function<B,C> f) {
-    C c = !passed ? f.apply(b) : null;
-    return of(c, a, !passed);
+    try {
+      C c = !passed ? f.apply(b) : null;
+      return of(c, a, !passed);
+    }
+    catch(Throwable t) {
+      return of(null, a, t, false);
+    }
   }
   
   public <C> Either<C,A> elseMap(Class<C> c) {
-    C x = !passed ? c.cast(b) : null;
-    return of(x, a, !passed);
+    try {
+      C x = !passed ? c.cast(b) : null;
+      return of(x, a, !passed);
+    }
+    catch(Throwable t) {
+      return of(null, a, t, false);
+    }
   }
   
   public Either<B,A> elseIf(Predicate<B> p) {
@@ -127,12 +157,31 @@ public record Either<A,B>(A a, B b, boolean passed) {
     return this;
   }
   
-  public Either<A,B> not() {
-    return of(a, b, !passed);
-  }
-  
   public Either<A,B> peek(Consumer<Either<A,B>> c) {
     c.accept(this);
+    return this;
+  }
+  
+  public Either<A,B> onFail(Consumer<Throwable> c) {
+    if(error != null) {
+      c.accept(error);
+    }
+    return this;
+  }
+  
+  public Either<A,B> printFail(int level) {
+    if(error != null) {
+      System.err.printf("[ERROR] %s%n", error);
+      if(error.getCause() != null) {
+        System.err.printf("[ERROR] CAUSE: %s%n", error.getCause());
+      }
+      level = level < 0 ? Integer.MAX_VALUE : level;
+      Stream.of(error.getStackTrace())
+          .limit(level)
+          .map(s->String.format("[ERROR]    at %s.%s(%s:%d)%n", s.getClassName(), s.getMethodName(), s.getFileName(), s.getLineNumber()))
+          .forEach(System.out::printf)
+          ;
+    }
     return this;
   }
   

@@ -21,6 +21,7 @@ import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.json.JsonIndex.IndexValue;
 import com.jun0rr.boss.query.Either;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import java.util.LinkedList;
 import java.util.List;
@@ -58,28 +59,10 @@ public class DefaultJsonStore implements JsonStore {
   private void load() {
     if(volume.isLoaded()) {
       Block b = volume.metadata();
-      List<BinType> types = context.read(b.buffer());
-      //System.out.println("ObjectStore.load(): types=" + types);
-      types.stream()
-          .filter(t->!context.codecs().containsKey(t))
-          .forEach(t->{
-            BinCodec codec;
-            if(t.type().isEnum()) {
-              codec = new EnumCodec(context);
-            }
-            else if(t.type().isArray()) {
-              codec = new ArrayCodec(context, t);
-            }
-            else {
-              codec = new ObjectCodec(context, t);
-            }
-            context.codecs().put(t, codec);
-          });
-      Index i = context.read(b.buffer());
-      index.classIndex().putAll(i.classIndex());
-      index.idIndex().putAll(i.idIndex());
-      index.valueIndex().putAll(i.valueIndex());
-      //System.out.println(index);
+      int len = b.buffer().getInt();
+      byte[] bs = new byte[len];
+      b.buffer().get(bs);
+      index.fromJson(Buffer.buffer(bs).toJsonObject());
       volume.release(b);
     }
   }
@@ -94,8 +77,10 @@ public class DefaultJsonStore implements JsonStore {
     Objects.requireNonNull(collection);
     Objects.requireNonNull(o);
     Block b = volume.allocate();
+    byte[] bs = o.toBuffer().getBytes();
     b.buffer().position(Long.BYTES)
-        .put(o.toBuffer().getBytes());
+        .putInt(bs.length)
+        .put(bs);
     int lim = b.buffer().position();
     long sum = b.buffer().position(Long.BYTES).limit(lim).checksum();
     b.buffer().position(0).putLong(sum);
@@ -106,8 +91,8 @@ public class DefaultJsonStore implements JsonStore {
   }
   
   private synchronized void storeIndex(String collection, JsonObject o, long sum, Block b) {
-    index.putIndex(sum, b.offset());
     index.putIndex(collection, b.offset());
+    index.putIndex(sum, b.offset());
     index.valueIndex().entrySet().stream()
         .filter(e->e.getKey().collection().equals(collection))
         .forEach(e->insertValueIndex(collection, o, b, e));
@@ -119,7 +104,7 @@ public class DefaultJsonStore implements JsonStore {
     for(String name : names) {
       final Class cls = val.getClass();
       val = Either.of(val)
-          .ifIsNotNull()
+          .ifNotNull()
           .andIs(JsonObject.class)
           .thenMap(j->j.getValue(name))
           .a();
@@ -238,12 +223,9 @@ public class DefaultJsonStore implements JsonStore {
   public void close() {
     try (volume) {
       Block b = volume.metadata();
-      List<BinType> types = new LinkedList<>();
-      context.codecs().keySet().stream()
-          .filter(t->!BinCodec.DEFAULT_BINTYPES.contains(t))
-          .forEach(types::add);
-      context.write(b.buffer(), types);
-      context.write(b.buffer(), index);
+      byte[] bs = index.toJson().toBuffer().getBytes();
+      b.buffer().putInt(bs.length);
+      b.buffer().put(bs);
       b.commit();
     }
   }
