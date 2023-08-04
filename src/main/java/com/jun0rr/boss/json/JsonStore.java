@@ -29,7 +29,7 @@ public interface JsonStore extends Closeable {
   
   public Stream<Stored<JsonObject>> find(String collection, Predicate<JsonObject> p);
   
-  public Stream<Stored<JsonObject>> find(String collection, String name, Object value);
+  public <V> Stream<Stored<JsonObject>> find(String collection, String name, V value);
   
   public Optional<Stored<JsonObject>> delete(long id);
   

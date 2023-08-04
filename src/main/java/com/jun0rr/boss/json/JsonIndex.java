@@ -9,8 +9,8 @@ import io.vertx.core.json.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.LongStream;
@@ -19,7 +19,7 @@ import java.util.stream.LongStream;
  *
  * @author F6036477
  */
-public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectionIndex, Map<IndexCollection,List<IndexValue>> valueIndex) {
+public record JsonIndex(Map<Long,Long> idOffsets, Map<String,List<Long>> collectionOffsets, Map<IndexCollection,List<IndexValue>> valueOffsets) {
   
   public static record IndexCollection(String collection, String name) implements Comparable<IndexCollection> {
     @Override
@@ -52,48 +52,48 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
     this(new ConcurrentSkipListMap<>(), new ConcurrentSkipListMap<>(), new ConcurrentSkipListMap<>());
   }
   
-  public JsonIndex putIndex(String collection, long offset) {
-    List<Long> idx = collectionIndex.get(collection);
+  public JsonIndex putOffset(String collection, long offset) {
+    List<Long> idx = collectionOffsets.get(collection);
     if(idx == null) {
       idx = new CopyOnWriteArrayList<>();
-      collectionIndex.put(collection, idx);
+      collectionOffsets.put(collection, idx);
     }
     idx.add(offset);
     return this;
   }
   
-  public JsonIndex putIndex(long id, long offset) {
-    idIndex.put(id, offset);
+  public JsonIndex putOffset(long id, long offset) {
+    idOffsets.put(id, offset);
     return this;
   }
   
-  public <T> JsonIndex putIndex(String collection, String name, T value, long offset) {
+  public <T> JsonIndex putOffset(String collection, String name, T value, long offset) {
     IndexCollection it = new IndexCollection(collection, name);
-    List<IndexValue> vs = valueIndex.get(it);
+    List<IndexValue> vs = valueOffsets.get(it);
     if(vs == null) {
       vs = new CopyOnWriteArrayList<>();
-      valueIndex.put(it, vs);
+      valueOffsets.put(it, vs);
     }
     vs.add(new IndexValue(offset, value));
     return this;
   }
   
-  public JsonIndex removeIndex(String collection, long offset) {
-    List<Long> idx = collectionIndex.get(collection);
+  public JsonIndex removeOffset(String collection, long offset) {
+    List<Long> idx = collectionOffsets.get(collection);
     if(idx != null) {
       idx.remove(offset);
     }
     return this;
   }
   
-  public JsonIndex removeIndex(long id) {
-    idIndex.remove(id);
+  public JsonIndex removeOffset(long id) {
+    idOffsets.remove(id);
     return this;
   }
   
-  public <T> JsonIndex removeIndex(String collection, String name, long offset) {
+  public <T> JsonIndex removeOffset(String collection, String name, long offset) {
     IndexCollection it = new IndexCollection(collection, name);
-    List<IndexValue> vs = valueIndex.get(it);
+    List<IndexValue> vs = valueOffsets.get(it);
     if(vs != null) {
       vs.stream()
           .filter(i->i.offset() == offset)
@@ -103,33 +103,50 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
     return this;
   }
   
-  public boolean containsIdIndex(long id) {
-    return idIndex.containsKey(id);
+  public boolean containsId(long id) {
+    return idOffsets.containsKey(id);
   }
   
-  public OptionalLong findIndexById(long id) {
-    return idIndex().entrySet().stream()
+  public OptionalLong findOffsetById(long id) {
+    return idOffsets().entrySet().stream()
         .filter(e->e.getKey() == id)
         .map(Entry::getValue)
         .mapToLong(Long::longValue)
         .findFirst();
   }
   
-  public LongStream findIndexByCollection(String collection) {
-    return collectionIndex().entrySet().stream()
+  public LongStream findOffsetByCollection(String collection) {
+    return collectionOffsets().entrySet().stream()
         .filter(e->e.getKey().equals(collection))
         .map(Entry::getValue)
         .flatMap(List::stream)
         .mapToLong(Long::longValue);
   }
   
-  public <T> LongStream findIndexByValue(String collection, String name, T value) {
-    return valueIndex().entrySet().stream()
+  public Optional<String> findCollectionByOffset(long offset) {
+    return collectionOffsets.entrySet().stream()
+        .filter(e->e.getValue().contains(offset))
+        .map(Entry::getKey)
+        .findFirst();
+  }
+  
+  public Optional<String> findCollectionById(long id) {
+    return findOffsetById(id).stream()
+        .mapToObj(this::findCollectionByOffset)
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .findFirst();
+  }
+  
+  public <T> LongStream findOffsetByValue(String collection, String name, T value) {
+    return valueOffsets().entrySet().stream()
         .filter(e->e.getKey().collection().equals(collection))
         .filter(e->e.getKey().name().equals(name))
         .map(Entry::getValue)
         .flatMap(List::stream)
+        //.peek(v->System.out.printf("=> findOffsetByValue: %s%n", v))
         .filter(v->v.value().equals(value))
+        .peek(v->System.out.printf("=> findOffsetByValue.filtered: %s%n", v))
         .mapToLong(IndexValue::offset);
   }
   
@@ -138,14 +155,14 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
     JsonArray ids = new JsonArray();
     JsonArray collections = new JsonArray();
     JsonArray values = new JsonArray();
-    idIndex.entrySet().stream()
+    idOffsets.entrySet().stream()
         .map(e->new JsonObject()
             .put("id", e.getKey())
             .put("offset", e.getValue()))
         .forEach(ids::add);
     index.put("ids", ids);
     
-    for(Entry<String,List<Long>> e : collectionIndex.entrySet()) {
+    for(Entry<String,List<Long>> e : collectionOffsets.entrySet()) {
       JsonObject o = new JsonObject();
       o.put("collection", e.getKey());
       JsonArray a = new JsonArray();
@@ -157,7 +174,7 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
     }
     index.put("collections", collections);
     
-    for(Entry<IndexCollection,List<IndexValue>> e : valueIndex.entrySet()) {
+    for(Entry<IndexCollection,List<IndexValue>> e : valueOffsets.entrySet()) {
       JsonObject o = new JsonObject();
       o.put("collection", e.getKey().collection());
       o.put("name", e.getKey().name());
@@ -180,7 +197,7 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
       JsonArray ids = o.getJsonArray("ids");
       ids.stream()
           .map(j->(JsonObject)j)
-          .forEach(j->putIndex(j.getLong("id"), j.getLong("offset")));
+          .forEach(j->putOffset(j.getLong("id"), j.getLong("offset")));
     }
     if(o.containsKey("collections")) {
       JsonArray collections = o.getJsonArray("collections");
@@ -188,7 +205,7 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
         JsonObject c = collections.getJsonObject(i);
         JsonArray a = c.getJsonArray("offsets");
         for(int j = 0; j < a.size(); j++) {
-          putIndex(c.getString("collection"), a.getLong(j));
+          putOffset(c.getString("collection"), a.getLong(j));
         }
       }
     }
@@ -199,7 +216,7 @@ public record JsonIndex(Map<Long,Long> idIndex, Map<String,List<Long>> collectio
         JsonArray a = oc.getJsonArray("values");
         for(int j = 0; j < a.size(); j++) {
           JsonObject ov = a.getJsonObject(j);
-          putIndex(
+          putOffset(
               oc.getString("collection"), 
               oc.getString("name"), 
               ov.getValue("value"), 
