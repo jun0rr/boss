@@ -55,7 +55,7 @@ public record MapperConfig(
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ConstructFunction>)f)
-        .map(Indexed.indexed())
+        .map(Indexed.builder())
         .forEach(i->construct.put(i.index(), i.value()));
     CombinedStrategy<ExtractFunction> extract = CombinedStrategy.newStrategy();
     es.stream()
@@ -64,7 +64,7 @@ public record MapperConfig(
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ExtractFunction>)f)
-        .map(Indexed.indexed())
+        .map(Indexed.builder())
         .forEach(i->extract.put(i.index(), i.value()));
     CombinedStrategy<InjectFunction> inject = CombinedStrategy.newStrategy();
     ((List<String>)(is == null || is.isEmpty() ? Collections.EMPTY_LIST : is)).stream()
@@ -73,7 +73,7 @@ public record MapperConfig(
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<InjectFunction>)f)
-        .map(Indexed.indexed())
+        .map(Indexed.builder())
         .forEach(i->inject.put(i.index(), i.value()));
     List<Map> ts = (List) map.get("codecs");
     List<CodecConfig> codecs = ts == null ? Collections.EMPTY_LIST : ts.stream()

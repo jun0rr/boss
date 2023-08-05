@@ -58,7 +58,7 @@ public class TestJsonStore {
       Stored<JsonObject> s = store.find("person", "age", 20).findFirst().get();
       System.out.printf("=> find(\"person\", \"age\", 20): %s%n", s);
       Assertions.assertEquals(ls.get(5), s.object());
-      store.delete(s.id());
+      System.out.printf("=> store.delete(%d): %s%n", s.id(), store.delete(s.id()));
       Stored<JsonObject> ss = store.find("person", "address.number", 214).findFirst().get();
       System.out.printf("=> find(\"person\", \"address.number\", 214): %s%n", ss);
       JsonObject jo = ss.object();

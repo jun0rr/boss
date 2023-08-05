@@ -5,28 +5,35 @@
 package com.jun0rr.boss.query;
 
 import io.vertx.core.json.JsonObject;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 
 /**
  *
  * @author f6036477
  */
-public interface Condition<T> {
+public interface Condition<T> extends Predicate<JsonObject> {
   
   public String field();
   
-  public boolean test(T expected, JsonObject obj);
+  public T expected();
   
-  public default Condition<T> and(Condition<T> and) {
-    return null;
-  }
-  
-  public default Condition<T> or(Condition<T> or) {
-    return null;
-  }
-  
-  public default Condition<T> not() {
-    return null;
+  public static <U> Condition<U> of(String field, U expected, BiFunction<U,JsonObject,Boolean> fn) {
+    return new Condition() {
+      private final String _field = field;
+      private final U _expected = expected;
+      public String field() { return _field; }
+      public U expected() { return _expected; }
+      public boolean test(JsonObject o) {
+        return fn.apply(_expected, o);
+      }
+
+      @Override
+      public boolean test(JsonObject t) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+      }
+    };
   }
   
   /*
@@ -60,12 +67,12 @@ public interface Condition<T> {
     - lesser (lt): Lesser then;
     - nlesser (nl): Not lesser then;
     - lessereq (le): Lesser or equals;
-    - between (bt): Between 2 values, exclusive;
+    - between (bt): Between 2 values (start inclusive, end exclusive);
     - nbetween (nb): Not between 2 values, exclusive;
-    - betweeni (bi): Between 2 values, inclusive;
     - equalsi (ei): Equals ignore case;
     - regex (rx): Regex expression;
     - in (in): One of many;
+    - nin (nin): Not in one of many;
     - isnull (nu): Is a null value (not present);
     - notnull (nn): Not a null value (is present).
   */
