@@ -38,6 +38,7 @@ public class TestJsonStore {
     mb.put("type", "direct");
     VolumeConfig vc = new VolumeConfig("TestJsonStore", BufferConfig.from(mb), p);
     JsonStore store = new DefaultJsonStore(vc);
+    System.out.printf("=> %s%n", store);
     try { //(JsonStore store = new DefaultJsonStore(vc)) {
       List<JsonObject> ls = new LinkedList();
       for(int i = 0; i < 20; i++) {
@@ -48,12 +49,13 @@ public class TestJsonStore {
                 .put("street", (10 + i) + " Avenue")
                 .put("number", 200 + i)));
       }
-      ls.stream()
-          .map(j->store.store("person", j))
+      store.store("person", ls)
           .forEach(s->System.out.printf("=> %s%n", s));
       //{"name":"John105","age":20,"address":"Street 205"}
       Assertions.assertEquals(ls.get(5), store.find("person", j->j.getInteger("age") == 20).findFirst().get().object());
+      System.out.printf("=> createIndex(\"person\", \"age\")%n");
       store.createIndex("person", "age", j->j.getInteger("age"));
+      System.out.printf("=> createIndex(\"person\", \"address.number\")%n");
       store.createIndex("person", "address.number", j->j.getJsonObject("address").getInteger("number"));
       Stored<JsonObject> s = store.find("person", "age", 20).findFirst().get();
       System.out.printf("=> find(\"person\", \"age\", 20): %s%n", s);
@@ -67,6 +69,7 @@ public class TestJsonStore {
       System.out.printf("=> store.update: %s%n", ss);
       store.close();
       JsonStore st = new DefaultJsonStore(vc);
+      System.out.printf("=> %s%n", st);
       Optional<Stored<JsonObject>> opt = st.find("person", "age", 20).findFirst();
       Assertions.assertTrue(opt.isEmpty());
       ss = st.find("person", "address.number", 50).findFirst().get();

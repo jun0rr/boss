@@ -4,6 +4,7 @@
  */
 package com.jun0rr.boss.json;
 
+import com.jun0rr.boss.query.Either;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.util.List;
@@ -83,6 +84,12 @@ public record JsonIndex(Map<Long,Long> idOffsets, Map<String,List<Long>> collect
     if(idx != null) {
       idx.remove(offset);
     }
+    valueOffsets().entrySet().stream()
+        .filter(e->e.getKey().collection().equals(collection))
+        .map(Entry::getValue)
+        .forEach(l->l.stream()
+            .filter(v->v.offset() == offset)
+            .forEach(l::remove));
     return this;
   }
   
@@ -91,28 +98,15 @@ public record JsonIndex(Map<Long,Long> idOffsets, Map<String,List<Long>> collect
     return this;
   }
   
-  public <T> JsonIndex removeOffset(String collection, String name, long offset) {
-    IndexCollection it = new IndexCollection(collection, name);
-    List<IndexValue> vs = valueOffsets.get(it);
-    if(vs != null) {
-      vs.stream()
-          .filter(i->i.offset() == offset)
-          .findFirst()
-          .ifPresent(vs::remove);
-    }
-    return this;
-  }
-  
   public boolean containsId(long id) {
     return idOffsets.containsKey(id);
   }
   
   public OptionalLong findOffsetById(long id) {
-    return idOffsets().entrySet().stream()
-        .filter(e->e.getKey() == id)
-        .map(Entry::getValue)
+    return Optional.ofNullable(idOffsets.get(id))
+        .stream()
         .mapToLong(Long::longValue)
-        .findFirst();
+        .findAny();
   }
   
   public LongStream findOffsetByCollection(String collection) {

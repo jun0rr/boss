@@ -15,15 +15,16 @@ import com.jun0rr.boss.json.JsonIndex.IndexValue;
 import com.jun0rr.boss.query.Either;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -65,6 +66,19 @@ public class DefaultJsonStore implements JsonStore {
   
   @Override
   public Stored<JsonObject> store(String collection, JsonObject o) {
+    return store(collection, o, true);
+  }
+  
+  @Override
+  public List<Stored<JsonObject>> store(String collection, Collection<JsonObject> c) {
+    List<Stored<JsonObject>> ls = Objects.requireNonNull(c).stream()
+        .map(o->store(collection, o, false))
+        .collect(Collectors.toList());
+    writeIndex();
+    return ls;
+  }
+  
+  private Stored<JsonObject> store(String collection, JsonObject o, boolean writeIndex) {
     Objects.requireNonNull(collection);
     Objects.requireNonNull(o);
     Block b = volume.allocate();
@@ -79,12 +93,13 @@ public class DefaultJsonStore implements JsonStore {
     b.commit();
     Stored<JsonObject> s = Stored.of(sum, b.offset(), o);
     storeIndex(collection, s);
+    if(writeIndex) writeIndex();
     return Stored.of(sum, b.offset(), o);
   }
   
   private synchronized void storeIndex(String collection, Stored<JsonObject> s) {
-    index.putOffset(collection, s.offset());
     index.putOffset(s.id(), s.offset());
+    index.putOffset(collection, s.offset());
     index.valueOffsets().entrySet().stream()
         .filter(e->e.getKey().collection().equals(collection))
         .forEach(e->insertValueIndex(collection, s, e));
@@ -106,6 +121,14 @@ public class DefaultJsonStore implements JsonStore {
         .thenAccept(v->entry.getValue().add(new IndexValue(s.offset(), v)));
   }
   
+  private void writeIndex() {
+    Block b = volume.metadata();
+    byte[] bs = index.toJson().toBuffer().getBytes();
+    b.buffer().position(0).putInt(bs.length);
+    b.buffer().put(bs);
+    b.commit();
+  }
+  
   @Override
   public Optional<Stored<JsonObject>> get(long id) {
     Long idx = index.idOffsets().get(id);
@@ -113,11 +136,11 @@ public class DefaultJsonStore implements JsonStore {
       return Optional.empty();
     }
     Block b = volume.get(idx);
-    Stored<JsonObject> s = Stored.of(b.buffer().position(0).getLong(), idx, from(b));
+    Stored<JsonObject> s = Stored.of(b.buffer().position(0).getLong(), idx, fromJson(b));
     return Optional.of(s);
   }
   
-  private JsonObject from(Block b) {
+  private JsonObject fromJson(Block b) {
     int len = b.buffer().position(Long.BYTES).getInt();
     byte[] bs = new byte[len];
     b.buffer().get(bs);
@@ -145,7 +168,7 @@ public class DefaultJsonStore implements JsonStore {
   public Stream<Stored<JsonObject>> find(String collection, Predicate<JsonObject> p) {
     return index.findOffsetByCollection(collection)
         .mapToObj(volume::get)
-        .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), from(b)))
+        .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), fromJson(b)))
         //.peek(System.out::println)
         .filter(s->p.test(s.object()));
   }
@@ -155,19 +178,17 @@ public class DefaultJsonStore implements JsonStore {
     return index.findOffsetByValue(collection, name, v)
         .mapToObj(volume::get)
         //.peek(System.out::println)
-        .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), from(b)));
+        .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), fromJson(b)));
   }
 
   @Override
   public Optional<Stored<JsonObject>> delete(long id) {
-    OptionalLong o = index.findOffsetById(id);
-    if(o.isEmpty()) return Optional.empty();
-    index.collectionOffsets().entrySet().stream()
-        .map(Entry::getValue)
-        .forEach(l->l.remove(o.getAsLong()));
-    Block b = volume.get(o.getAsLong());
-    Stored<JsonObject> s = Stored.of(b.buffer().position(0).getLong(), o.getAsLong(), from(b));
-    removeValueIndex(s);
+    Long offset = index.idOffsets().remove(id);
+    if(offset == null) return Optional.empty();
+    Optional<String> col = index.findCollectionByOffset(offset);
+    Block b = volume.get(offset);
+    Stored<JsonObject> s = Stored.of(b.buffer().position(0).getLong(), offset, fromJson(b));
+    index.removeOffset(col.get(), offset);
     volume.release(b);
     return Optional.of(s);
   }
@@ -177,17 +198,9 @@ public class DefaultJsonStore implements JsonStore {
     return find(collection, p)
         .peek(s->index.removeOffset(s.id()))
         .peek(s->index.removeOffset(collection, s.offset()))
-        .peek(this::removeValueIndex)
         .peek(s->volume.release(s.offset()));
   }
   
-  private void removeValueIndex(Stored<JsonObject> s) {
-    index.valueOffsets().values().stream()
-        .forEach(l->l.stream()
-            .filter(v->v.offset() == s.offset())
-            .forEach(l::remove));
-  }
-
   @Override
   public <V> void createIndex(String collection, String name, Function<JsonObject,V> fn) {
     List<Long> ofs = index.collectionOffsets().get(collection);
@@ -196,7 +209,7 @@ public class DefaultJsonStore implements JsonStore {
       List<IndexValue> ls = new CopyOnWriteArrayList<>();
       index.findOffsetByCollection(collection)
           .mapToObj(volume::get)
-          .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), from(b)))
+          .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), fromJson(b)))
           .map(s->new IndexValue(s.offset(), fn.apply(s.object())))
           .forEach(ls::add);
       index.valueOffsets().put(ic, ls);
@@ -247,7 +260,7 @@ public class DefaultJsonStore implements JsonStore {
 
   @Override
   public String toString() {
-    return "ObjectStore{" + "volume=" + volume + ", index=" + index + '}';
+    return "DefaultJsonStore{" + "volume=" + volume + ", index=" + index + '}';
   }
 
 }
