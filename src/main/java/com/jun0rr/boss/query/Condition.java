@@ -1,39 +1,37 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.jun0rr.boss.query;
 
 import io.vertx.core.json.JsonObject;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-
 /**
  *
- * @author f6036477
+ * @author F6036477
  */
-public interface Condition<T> extends Predicate<JsonObject> {
-  
-  public String field();
-  
-  public T expected();
-  
-  public static <U> Condition<U> of(String field, U expected, BiFunction<U,JsonObject,Boolean> fn) {
-    return new Condition() {
-      private final String _field = field;
-      private final U _expected = expected;
-      public String field() { return _field; }
-      public U expected() { return _expected; }
-      public boolean test(JsonObject o) {
-        return fn.apply(_expected, o);
-      }
+public record Condition(String field, Object value, BiFunction<Object,Object,Boolean> function) implements Predicate<JsonObject> {
 
-      @Override
-      public boolean test(JsonObject t) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-      }
-    };
+  @Override
+  public boolean test(JsonObject o) {
+    return function.apply(value, extract(o));
+  }
+  
+  protected Object extract(JsonObject o) {
+    List<String> names = List.of(field.split("\\."));
+    Object val = o;
+    for(String name : names) {
+      val = Either.of(val)
+          .ifNotNull()
+          .andIs(JsonObject.class)
+          .andIs(j->j.containsKey(name))
+          .thenMap(j->j.getValue(name))
+          .a();
+    }
+    return val;
   }
   
   /*
@@ -62,10 +60,8 @@ public interface Condition<T> extends Predicate<JsonObject> {
     - equals (eq);
     - nequals (ne): Not equals;
     - greater (gt): Greater then;
-    - ngreater (ng): Not greater then;
     - greatereq (ge): Greater or equals;
     - lesser (lt): Lesser then;
-    - nlesser (nl): Not lesser then;
     - lessereq (le): Lesser or equals;
     - between (bt): Between 2 values (start inclusive, end exclusive);
     - nbetween (nb): Not between 2 values, exclusive;

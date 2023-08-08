@@ -7,6 +7,8 @@ package com.jun0rr.boss.json;
 import com.jun0rr.boss.Stored;
 import io.vertx.core.json.JsonObject;
 import java.io.Closeable;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -20,6 +22,8 @@ import java.util.stream.Stream;
 public interface JsonStore extends Closeable {
   
   public Stored<JsonObject> store(String collection, JsonObject o);
+  
+  public List<Stored<JsonObject>> store(String collection, Collection<JsonObject> c);
   
   public Optional<Stored<JsonObject>> get(long id);
   

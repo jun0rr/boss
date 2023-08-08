@@ -14,22 +14,22 @@ import java.util.stream.Stream;
  *
  * @author F6036477
  */
-public record Either<A,B>(A a, B b, Throwable error, boolean passed) {
+public record Either<A,B>(A a, B b, A mapped, Throwable error, boolean passed) {
 
-  public static <X,Y> Either<X,Y> of(X x, Y y, Throwable t, boolean passed) {
-    return new Either(x, y, t, passed);
+  public static <X,Y> Either<X,Y> of(X x, Y y, X mapped, Throwable t, boolean passed) {
+    return new Either(x, y, mapped, t, passed);
   }
   
   public static <X,Y> Either<X,Y> of(X x, Y y, boolean passed) {
-    return new Either(x, y, null, passed);
+    return new Either(x, y, null, null, passed);
   }
   
   public static <X,Y> Either<X,Y> of(X x, Y y) {
-    return new Either(x, y, null, false);
+    return new Either(x, y, null, null, false);
   }
   
   public static <X> Either<X,X> of(X x) {
-    return new Either(x, x, null, false);
+    return new Either(x, x, null, null, false);
   }
   
   public boolean is(Predicate<A> p) {
@@ -57,84 +57,85 @@ public record Either<A,B>(A a, B b, Throwable error, boolean passed) {
   }
   
   public Either<A,B> ifIs(Predicate<A> p) {
-    return of(a, b, p.test(a));
+    return of(a, b, mapped, error, p.test(a));
   }
   
   public <C> Either<C,B> ifIs(Class<C> c) {
-    return of(a, b, is(c)).thenMap(c);
+    return of(a, b, mapped, error, is(c)).thenMap(c);
   }
   
   public Either<A,B> ifNotNull() {
-    return of(a, b, isNotNull());
+    return of(a, b, mapped, error, isNotNull());
   }
   
   public Either<A,B> andIs(Predicate<A> p) {
-    return of(a, b, and(p));
+    return of(a, b, mapped, error, and(p));
   }
   
   public Either<A,B> orIs(Predicate<A> p) {
-    return of(a, b, or(p));
+    return of(a, b, mapped, error, or(p));
   }
   
   public <C> Either<C,B> andIs(Class<C> c) {
-    return of(a, b, and(x->c.isAssignableFrom(x.getClass()))).thenMap(c);
+    return of(a, b, mapped, error, and(x->c.isAssignableFrom(x.getClass()))).thenMap(c);
   }
   
   public <C> Either<C,B> orIs(Class<C> c) {
-    return of(a, b, or(x->c.isAssignableFrom(x.getClass()))).thenMap(c);
+    return of(a, b, mapped, error, or(x->c.isAssignableFrom(x.getClass()))).thenMap(c);
   }
   
   public <C> Either<C,B> thenMap(Function<A,C> f) {
     try {
       C c = passed ? f.apply(a) : null;
-      return of(c, b, passed);
+      return of(c, b, c, error, passed);
     }
     catch(Throwable t) {
-      return of(null, b, t, false);
+      return of(null, b, null, t, false);
     }
   }
   
   public <C> Either<C,B> thenMap(Class<C> c) {
     try {
       C x = passed ? c.cast(a) : null;
-      return of(x, b, passed);
+      return of(x, b, x, error, passed);
     }
     catch(Throwable t) {
-      return of(null, b, t, false);
+      return of(null, b, null, t, false);
     }
   }
   
   public <C> Either<C,A> elseMap(Function<B,C> f) {
     try {
       C c = !passed ? f.apply(b) : null;
-      return of(c, a, !passed);
+      return of(c, a, c, error, !passed);
     }
     catch(Throwable t) {
-      return of(null, a, t, false);
+      return of(null, a, null, t, false);
     }
   }
   
   public <C> Either<C,A> elseMap(Class<C> c) {
     try {
       C x = !passed ? c.cast(b) : null;
-      return of(x, a, !passed);
+      return of(x, a, x, error, !passed);
     }
     catch(Throwable t) {
-      return of(null, a, t, false);
+      return of(null, a, null, t, false);
     }
   }
   
   public Either<B,A> elseIf(Predicate<B> p) {
-    return of(b, a, !passed && p.test(b));
+    return of(b, a, null, error, !passed && p.test(b));
   }
   
   public <C> Either<C,A> elseIs(Class<C> c) {
     boolean p = !passed && c.isAssignableFrom(b.getClass());
-    return of(p ? c.cast(b) : null, a, p);
+    C x = p ? c.cast(b) : null;
+    return of(x, a, x, error, p);
   }
   
   public Either<B,A> elseNot() {
-    return of(b, a, !passed);
+    return of(b, a, null, error, !passed);
   }
   
   public Either<A,B> thenAccept(Consumer<A> c) {

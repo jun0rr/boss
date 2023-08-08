@@ -5,6 +5,8 @@
 package com.jun0rr.boss.test;
 
 import com.jun0rr.boss.query.Either;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
@@ -16,9 +18,9 @@ public class TestEither {
   
   @Test public void test() {
     System.out.printf("------ test ------%n");
-    //Object o = "Hello";
+    Object o = "Hello";
     //Object o = 50;
-    Object o = false;
+    //Object o = false;
     Either.of(o)
         .peek(e->System.out.printf("=> %s%n", e))
         .ifNotNull()
@@ -79,6 +81,34 @@ public class TestEither {
         .elseFail(x->new IllegalArgumentException(String.format("'%s' is NOT a Number!", x)))
     )
     ;
+  }
+  
+  @Test public void testMultiClass() {
+    System.out.printf("------ testMultiClass ------%n");
+    Object a = 5;  //expected
+    Object b = 10; //extracted
+    Boolean r = Either.of(b)
+        .ifIs(o->o == null)
+        .peek(e->System.out.printf("=> if is null: %s%n", e))
+        .orIs(o->o.getClass() != a.getClass())
+        .peek(e->System.out.printf("=> or classes is different: %s%n", e))
+        .thenMap(o->false)
+        .peek(e->System.out.printf("=> then map to false: %s%n", e))
+        .elseIs(Comparable.class)
+        .peek(e->System.out.printf("=> else is Comparable: %s%n", e))
+        .thenMap(o->o.compareTo(a) > 0)
+        .peek(e->System.out.printf("=> then compare: %s%n", e))
+        .elseIs(JsonArray.class)
+        .peek(e->System.out.printf("=> else is JsonArray: %s%n", e))
+        .thenMap(o->Integer.compare(o.size(), ((JsonArray)a).size()) > 0)
+        .peek(e->System.out.printf("=> then compare: %s%n", e))
+        .elseIs(JsonObject.class)
+        .peek(e->System.out.printf("=> else is JsonObject: %s%n", e))
+        .thenMap(o->Integer.compare(o.size(), ((JsonObject)a).size()) > 0)
+        .peek(e->System.out.printf("=> then compare: %s%n", e))
+        .mapped()
+        ;
+    System.out.printf("=> result: %s%n", r);
   }
   
 }
