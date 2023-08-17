@@ -121,40 +121,38 @@ public interface Conditions {
   
   public static Condition bt(String field, Object value) {
     return new Condition(field, value, (a,b)->{
-      System.out.printf("=> a=%s, b=%s, %n", a, b);
       if(!JsonArray.class.isAssignableFrom(a.getClass()) 
-          || Comparable.class.isAssignableFrom(b.getClass()) 
-          || Comparable.class.isAssignableFrom(((JsonArray)a).getValue(0).getClass())) {
+          || !Comparable.class.isAssignableFrom(b.getClass()) 
+          || !Comparable.class.isAssignableFrom(((JsonArray)a).getValue(0).getClass())) {
         return false;
       }
       JsonArray va = (JsonArray) a;
       Comparable x = (Comparable) va.getValue(0);
-      Comparable y = (Comparable) b;
-      Comparable z = (Comparable) va.getValue(1);
-      System.out.printf("=> y:%s >= x:%s && y:%s < z:%s = yx:%d, yz:%d%n", y, x, y, z, y.compareTo(x), y.compareTo(z));
-      return y.compareTo(x) >= 0 && y.compareTo(z) < 0;
+      Comparable y = (Comparable) va.getValue(1);
+      Comparable z = (Comparable) b;
+      return z.compareTo(x) >= 0 && z.compareTo(y) < 0;
     });
   }
   
   public static Condition nb(String field, Object value) {
     return new Condition(field, value, (a,b)->{
       if(!JsonArray.class.isAssignableFrom(a.getClass()) 
-          || Comparable.class.isAssignableFrom(b.getClass()) 
-          || Comparable.class.isAssignableFrom(((JsonArray)a).getValue(0).getClass())) {
+          || !Comparable.class.isAssignableFrom(b.getClass()) 
+          || !Comparable.class.isAssignableFrom(((JsonArray)a).getValue(0).getClass())) {
         return false;
       }
       JsonArray va = (JsonArray) a;
       Comparable x = (Comparable) va.getValue(0);
-      Comparable y = (Comparable) b;
-      Comparable z = (Comparable) va.getValue(1);
-      return y.compareTo(x) <= 0 && y.compareTo(z) > 0;
+      Comparable y = (Comparable) va.getValue(1);
+      Comparable z = (Comparable) b;
+      return z.compareTo(x) < 0 || z.compareTo(y) >= 0;
     });
   }
   
   public static Condition eqi(String field, Object value) {
     return new Condition(field, value, (a,b)->{
       if(!String.class.isAssignableFrom(a.getClass()) 
-          || String.class.isAssignableFrom(b.getClass())) {
+          || !String.class.isAssignableFrom(b.getClass())) {
         return false;
       }
       String x = (String) a;
@@ -166,7 +164,7 @@ public interface Conditions {
   public static Condition rx(String field, Object value) {
     return new Condition(field, value, (a,b)->{
       if(!String.class.isAssignableFrom(a.getClass()) 
-          || String.class.isAssignableFrom(b.getClass())) {
+          || !String.class.isAssignableFrom(b.getClass())) {
         return false;
       }
       String x = (String) a;
@@ -205,7 +203,7 @@ public interface Conditions {
       if(JsonArray.class.isAssignableFrom(b.getClass())) {
         JsonArray vb = (JsonArray) b;
         return vb.stream()
-            .noneMatch(o->va.stream()
+            .allMatch(o->va.stream()
                 .noneMatch(p->Objects.equals(o, p)));
       }
       else {
@@ -213,14 +211,6 @@ public interface Conditions {
             .noneMatch(o->Objects.equals(b, o));
       }
     });
-  }
-  
-  public static Condition nu(String field, Object value) {
-    return new Condition(field, value, (a,b)->b == null);
-  }
-  
-  public static Condition nn(String field, Object value) {
-    return new Condition(field, value, (a,b)->b != null);
   }
   
 }

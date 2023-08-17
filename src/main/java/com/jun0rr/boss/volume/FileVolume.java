@@ -76,18 +76,19 @@ public class FileVolume extends DefaultVolume {
     return ob.content();
   }
   
-  @Override
-  public void close() {
+  private void writeMetadata() {
     Block b = get(0);
     b.buffer().put(METADATA_ID);
     b.buffer().putLong(woffset.get());
     b.buffer().putLong(metaidx.get());
     b.buffer().putInt(freebufs.size());
-    //System.out.printf("Volume.close: woffset=%d, metaidx=%d, freebufs=%d%n", woffset.get(), metaidx.get(), freebufs.size());
-    for(long offset : freebufs) {
-      b.buffer().putLong(offset);
-    }
+    freebufs.stream().forEach(b.buffer()::putLong);
     b.commit();
+  }
+  
+  @Override
+  public void close() {
+    writeMetadata();
     Uncheck.call(()->channel.close());
   }
 
