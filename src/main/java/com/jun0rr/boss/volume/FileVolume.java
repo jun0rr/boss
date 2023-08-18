@@ -67,6 +67,7 @@ public class FileVolume extends DefaultVolume {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
     Cached<OffsetBuffer> ob = cache.get(offset);
+    System.out.printf("FileVolume.getOffsetBuffer( %d ): %s%n", offset, ob);
     if(ob == null) {
       ByteBuffer bb = malloc.alloc();
       Uncheck.call(()->channel.read(bb, offset));

@@ -72,6 +72,8 @@ public class DefaultVolume implements Volume {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
     Cached<OffsetBuffer> ob = cache.get(offset);
+    System.out.printf("DefaultVolume.getOffsetBuffer( %d ): %s%n", offset, ob);
+    Objects.requireNonNull(ob);
     if(ob == null) {
       ByteBuffer bb = malloc.alloc();
       ob = putCached(OffsetBuffer.of(offset, bb));
