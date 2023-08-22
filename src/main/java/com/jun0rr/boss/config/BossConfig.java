@@ -62,7 +62,7 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     
     private long maxCacheSize;
     
-    private final Map<Class,BinCodec> codecs;
+    private final Map<Class,Class> codecs;
     
     private InvokeStrategy<ConstructFunction> mappingConstructStrategy;
     
