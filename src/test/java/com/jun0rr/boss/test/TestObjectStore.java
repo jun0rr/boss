@@ -39,7 +39,7 @@ public class TestObjectStore {
   
   @Test
   public void testFileStore() {
-    System.out.printf("---> testFileStore() <---");
+    System.out.printf("---> testFileStore() <---%n");
     try {
       Path path = Paths.get("./TestObjectStore.bin");
       Uncheck.call(()->Files.deleteIfExists(path));
@@ -70,29 +70,25 @@ public class TestObjectStore {
   
   @Test
   public void testMemStore() {
-    System.out.printf("---> testMemStore() <---");
+    System.out.printf("---> testMemStore() <---%n");
     try {
-      Path path = Paths.get("./TestObjectStore.bin");
-      Uncheck.call(()->Files.deleteIfExists(path));
-      BossConfig config = BossConfig.from(TestObjectStore.class.getResourceAsStream("/boss.yml"));
       BossConfig config = BossConfig.builder()
+          .addCombinedConstructStrategy(new FieldsOrderConstructStrategy())
+          .addCombinedConstructStrategy(new DefaultConstructStrategy())
+          .addCombinedConstructStrategy(new AnnotationConstructStrategy())
+          .addCombinedExtractStrategy(new GetterStrategy())
+          .addCombinedExtractStrategy(new FieldGetterStrategy())
+          .addCombinedExtractStrategy(new AnnotationExtractStrategy())
+          .addCombinedInjectStrategy(new SetterStrategy())
+          .addCombinedInjectStrategy(new FieldSetterStrategy())
+          .addCombinedInjectStrategy(new AnnotationInjectStrategy())
           .setBufferSize(1024)
           .setBufferType(BufferConfig.Type.DIRECT)
-          .setMappingConstructStrategy(new CombinedStrategy<ConstructFunction>()
-              .put(0, new FieldsOrderConstructStrategy())
-              .put(1, new DefaultConstructStrategy())
-              .put(2, new AnnotationConstructStrategy()))
-          .setMappingExtractStrategy(new CombinedStrategy<ExtractFunction>()
-              .put(0, new GetterStrategy())
-              .put(1, new FieldGetterStrategy())
-              .put(2, new AnnotationExtractStrategy()))
-          .setMappingInjectStrategy(new CombinedStrategy<InjectFunction>()
-              .put(0, new SetterStrategy())
-              .put(1, new FieldSetterStrategy())
-              .put(2, new AnnotationInjectStrategy()))
           .setMaxCacheSize(4*1024*1024)
           .setVolumeId("memVolume")
+          .build()
           ;
+      System.out.println(config);
       ObjectStore store = new DefaultObjectStore(config);
       System.out.println(store);
       for(int i = 0; i < 10; i++) {
@@ -104,7 +100,6 @@ public class TestObjectStore {
       store.find(Person.class, p->p.name().equals("John-5")).forEach(System.out::println);
       store.close();
       
-      store = new DefaultObjectStore(config);
       for(int i = 0; i < 10; i++) {
         Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
         Assertions.assertEquals(p, store.find(Person.class, "name", p.name()).findFirst().get().object());

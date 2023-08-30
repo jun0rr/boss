@@ -7,7 +7,8 @@ package com.jun0rr.boss.config;
 import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import com.jun0rr.binj.BinCodec;
-import com.jun0rr.binj.BinType;
+import com.jun0rr.binj.BinContext;
+import com.jun0rr.binj.mapping.CombinedStrategy;
 import com.jun0rr.binj.mapping.ConstructFunction;
 import com.jun0rr.binj.mapping.ExtractFunction;
 import com.jun0rr.binj.mapping.InjectFunction;
@@ -15,7 +16,8 @@ import com.jun0rr.binj.mapping.InvokeStrategy;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -62,7 +64,7 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     
     private long maxCacheSize;
     
-    private final Map<Class,Class> codecs;
+    private final List<BinCodec> codecs;
     
     private InvokeStrategy<ConstructFunction> mappingConstructStrategy;
     
@@ -75,16 +77,16 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     private Path volumeStorePath;
     
     public Builder() {
-      this.codecs = new HashMap<>();
+      this.codecs = new LinkedList<>();
       this.bufferType = BufferConfig.Type.HEAP;
     }
     
     public Builder addCodec(BinCodec codec) {
-      codecs.put(Objects.requireNonNull(codec).bintype().type(), codec);
+      codecs.add(Objects.requireNonNull(codec));
       return this;
     }
     
-    public Map<Class,BinCodec> getCodecs() {
+    public List<BinCodec> getCodecs() {
       return codecs;
     }
 
@@ -123,6 +125,19 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
       this.mappingConstructStrategy = mappingConstructStrategy;
       return this;
     }
+    
+    public Builder addCombinedConstructStrategy(InvokeStrategy<ConstructFunction> is) {
+      Objects.requireNonNull(is);
+      if(mappingConstructStrategy == null 
+          || !CombinedStrategy.class.isAssignableFrom(mappingConstructStrategy.getClass())) {
+        mappingConstructStrategy = new CombinedStrategy<>();
+      }
+      CombinedStrategy<ConstructFunction> cs = (CombinedStrategy<ConstructFunction>)mappingConstructStrategy;
+      int maxWeigth = cs.strategies().keySet().stream()
+          .mapToInt(Integer::intValue).max().orElse(0);
+      cs.put(maxWeigth+1, is);
+      return this;
+    }
 
     public InvokeStrategy<ExtractFunction> getMappingExtractStrategy() {
       return mappingExtractStrategy;
@@ -133,12 +148,38 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
       return this;
     }
 
+    public Builder addCombinedExtractStrategy(InvokeStrategy<ExtractFunction> is) {
+      Objects.requireNonNull(is);
+      if(mappingExtractStrategy == null 
+          || !CombinedStrategy.class.isAssignableFrom(mappingExtractStrategy.getClass())) {
+        mappingExtractStrategy = new CombinedStrategy<>();
+      }
+      CombinedStrategy<ExtractFunction> cs = (CombinedStrategy<ExtractFunction>)mappingExtractStrategy;
+      int maxWeigth = cs.strategies().keySet().stream()
+          .mapToInt(Integer::intValue).max().orElse(0);
+      cs.put(maxWeigth+1, is);
+      return this;
+    }
+
     public InvokeStrategy<InjectFunction> getMappingInjectStrategy() {
       return mappingInjectStrategy;
     }
 
     public Builder setMappingInjectStrategy(InvokeStrategy<InjectFunction> mappingInjectStrategy) {
       this.mappingInjectStrategy = mappingInjectStrategy;
+      return this;
+    }
+
+    public Builder addCombinedInjectStrategy(InvokeStrategy<InjectFunction> is) {
+      Objects.requireNonNull(is);
+      if(mappingInjectStrategy == null 
+          || !CombinedStrategy.class.isAssignableFrom(mappingInjectStrategy.getClass())) {
+        mappingInjectStrategy = new CombinedStrategy<>();
+      }
+      CombinedStrategy<InjectFunction> cs = (CombinedStrategy<InjectFunction>)mappingInjectStrategy;
+      int maxWeigth = cs.strategies().keySet().stream()
+          .mapToInt(Integer::intValue).max().orElse(0);
+      cs.put(maxWeigth+1, is);
       return this;
     }
 
@@ -162,7 +203,14 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     
     public BossConfig build() {
       BufferConfig bc = new BufferConfig(bufferType, bufferSize, maxCacheSize);
-      
+      VolumeConfig vc = new VolumeConfig(volumeId, bc, volumeStorePath);
+      BinContext ctx = BinContext.newContext();
+      codecs.forEach(c->ctx.putCodec(c));
+      ctx.mapper().constructStrategies().add(mappingConstructStrategy);
+      ctx.mapper().extractStrategies().add(mappingExtractStrategy);
+      ctx.mapper().injectStrategies().add(mappingInjectStrategy);
+      MapperConfig mc = new MapperConfig(mappingConstructStrategy, mappingExtractStrategy, mappingInjectStrategy, ctx);
+      return new BossConfig(vc, mc);
     }
 
     @Override

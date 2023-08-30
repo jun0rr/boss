@@ -47,7 +47,7 @@ public class DefaultObjectStore implements ObjectStore {
   public DefaultObjectStore(BossConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
     this.volume = config.volume().createVolume();
-    this.context = config.mapper().createBinContext();
+    this.context = config.mapper().context();
     this.index = new Index();
     load();
   }

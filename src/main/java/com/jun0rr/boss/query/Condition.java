@@ -32,6 +32,7 @@ public record Condition(String field, Object value, BiFunction<Object,Object,Boo
           .a();
     }
     return val;
+    Math.
   }
   
   /*
@@ -40,6 +41,21 @@ public record Condition(String field, Object value, BiFunction<Object,Object,Boo
     collection: <name>,
     fields: [<field0>, <field1.nestedField>, ... <fiendN>],
     sort: [<field0>, <field1.nestedField>, ... <fiendN>],
+    sortAsc: [<field0>, <field1.nestedField>, ... <fiendN>],
+    sortDesc: [<field0>, <field1.nestedField>, ... <fiendN>],
+    transforms:
+      {
+        field: <field0>,
+        plus: <value>
+      },
+      {
+        field: <field0>,
+        divide: <value>
+      }, ...
+      {
+        field: <field0>,
+        multiply: <value>
+      }, ...
     test:
     {
       field: <field0>,
@@ -71,6 +87,19 @@ public record Condition(String field, Object value, BiFunction<Object,Object,Boo
     - nin (nin): Not in one of many;
     - isnull (nu): Is a null value (not present);
     - notnull (nn): Not a null value (is present).
+  
+  Possible Transforms:
+    - plus (+);
+    - minus (-);
+    - divide (/);
+    - multiply (*);
+    - squart (sq);
+    - max (mx);
+    - min (mi);
+    - ceil (cl);
+    - floor (fl);
+    - pow (pw);
+    - 
   */
   
 }

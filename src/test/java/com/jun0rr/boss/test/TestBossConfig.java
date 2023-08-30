@@ -5,7 +5,6 @@
 package com.jun0rr.boss.test;
 
 import com.esotericsoftware.yamlbeans.YamlException;
-import com.jun0rr.binj.BinContext;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.config.BufferConfig;
 import java.nio.file.Paths;
@@ -26,9 +25,8 @@ public class TestBossConfig {
     Assertions.assertEquals(4 * Math.round(Math.pow(1024, 3)), bc.volume().buffer().maxCacheSize());
     Assertions.assertEquals(BufferConfig.Type.DIRECT, bc.volume().buffer().type());
     Assertions.assertEquals(Paths.get("./TestObjectStore.bin"), bc.volume().storePath());
-    BinContext ctx = bc.mapper().createBinContext();
-    bc.mapper().codecs().stream()
-        .map(c->c.createCodec(ctx))
+    bc.mapper().context().codecs()
+        .values()
         .forEach(System.out::println);
   }
   
