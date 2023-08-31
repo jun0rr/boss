@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  *
  * @author f6036477
  */
-public interface Conditions {
+public abstract class Conditions {
   
   public static Condition eq(String field, Object value) {
     return new Condition(field, value, (a,b)->Objects.equals(a, b));
@@ -146,6 +146,53 @@ public interface Conditions {
       Comparable y = (Comparable) va.getValue(1);
       Comparable z = (Comparable) b;
       return z.compareTo(x) < 0 || z.compareTo(y) >= 0;
+    });
+  }
+  
+  public static Condition ct(String field, Object value) {
+    return new Condition(field, value, (a,b)->{
+      if(String.class.isAssignableFrom(a.getClass()) 
+          && String.class.isAssignableFrom(b.getClass())) {
+        String x = (String) a;
+        String y = (String) b;
+        return y.contains(x);
+      }
+      else if(JsonArray.class.isAssignableFrom(b.getClass())) {
+        return ((JsonArray)b).contains(a);
+      }
+      else return false;
+    });
+  }
+  
+  public static Condition ew(String field, Object value) {
+    return new Condition(field, value, (a,b)->{
+      if(String.class.isAssignableFrom(a.getClass()) 
+          && String.class.isAssignableFrom(b.getClass())) {
+        String x = (String) a;
+        String y = (String) b;
+        return y.endsWith(x);
+      }
+      else if(JsonArray.class.isAssignableFrom(b.getClass())) {
+        JsonArray y = (JsonArray) b;
+        return Objects.equals(y.getValue(y.size() -1), a);
+      }
+      else return false;
+    });
+  }
+  
+  public static Condition sw(String field, Object value) {
+    return new Condition(field, value, (a,b)->{
+      if(String.class.isAssignableFrom(a.getClass()) 
+          && String.class.isAssignableFrom(b.getClass())) {
+        String x = (String) a;
+        String y = (String) b;
+        return y.startsWith(x);
+      }
+      else if(JsonArray.class.isAssignableFrom(b.getClass())) {
+        JsonArray y = (JsonArray) b;
+        return Objects.equals(y.getValue(0), a);
+      }
+      else return false;
     });
   }
   

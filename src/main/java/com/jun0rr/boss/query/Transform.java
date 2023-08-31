@@ -7,16 +7,16 @@ package com.jun0rr.boss.query;
 import io.vertx.core.json.JsonObject;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Predicate;
+import java.util.function.Function;
 
 /**
  *
  * @author F6036477
  */
-public record Condition(String field, Object value, BiFunction<Object,Object,Boolean> function) implements Predicate<JsonObject> {
+public record Transform(String field, Object value, BiFunction<Object,Object,Object> function) implements Function<JsonObject,Object> {
 
   @Override
-  public boolean test(JsonObject o) {
+  public Object apply(JsonObject o) {
     return function.apply(value, extract(o));
   }
   
@@ -99,7 +99,7 @@ public record Condition(String field, Object value, BiFunction<Object,Object,Boo
     - div;  //divide
     - x;    //multiply
     - pow (pw);
-    - *squart (sq);
+    - *sqrt (sq);
     - *max;
     - *min;
     - *ceil (cl);
