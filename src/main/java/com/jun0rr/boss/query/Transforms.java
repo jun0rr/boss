@@ -5,7 +5,6 @@
 package com.jun0rr.boss.query;
 
 import io.vertx.core.json.JsonArray;
-import java.util.Objects;
 
 /**
  *
@@ -333,7 +332,7 @@ public abstract class Transforms {
       }
       String x = (String) a;
       String y = (String) b;
-      return y.split(x);
+      return JsonArray.of(y.split(x));
     });
   }
   
