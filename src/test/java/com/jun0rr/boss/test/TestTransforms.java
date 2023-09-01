@@ -7,6 +7,10 @@ package com.jun0rr.boss.test;
 import com.jun0rr.boss.query.Transforms;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
@@ -138,7 +142,245 @@ public class TestTransforms {
     String x = "   HellO WorlD   ";
     JsonObject o = JsonObject.of("str", x);
     String y = " ";
-    Assertions.assertArrayEquals(x.split(y), (String[])Transforms.split("str", y).apply(o));
+    Assertions.assertEquals(JsonArray.of(x.split(y)), Transforms.split("str", y).apply(o));
+  }
+  
+  @Test public void testTold() {
+    //String str = "2023-09-01 13:23:19";
+    String str = "2023-09-01";
+    JsonObject o = JsonObject.of("date", str);
+    System.out.printf("---> testTold <---%n");
+    LocalDate dt = (LocalDate) Transforms.told("date", null).apply(o);
+    System.out.printf("-> told: %s -> %s%n", str, dt);
+  }
+  
+  @Test public void testTodt() {
+    String str = "2023-09-01 13:23:19";
+    JsonObject o = JsonObject.of("date", str);
+    System.out.printf("---> testTodt <---%n");
+    LocalDateTime dt = (LocalDateTime) Transforms.todt("date", null).apply(o);
+    System.out.printf("-> todt: %s -> %s%n", str, dt);
+  }
+  
+  @Test public void testTozd() {
+    String str = "2023-09-01 13:23:19";
+    JsonObject o = JsonObject.of("date", str);
+    System.out.printf("---> testTozd <---%n");
+    ZonedDateTime dt = (ZonedDateTime) Transforms.tozd("date", null).apply(o);
+    System.out.printf("-> tozd: %s -> %s%n", str, dt);
+  }
+  
+  @Test public void testGetdt() {
+    LocalDateTime dt = LocalDateTime.of(2023, 9, 1, 13, 23, 19);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testSetdt() {
+    LocalDateTime dt = LocalDateTime.of(2023, 9, 1, 13, 23, 19);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 5);
+    dt = (LocalDateTime) Transforms.setdt("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testAdddt() {
+    LocalDateTime dt = LocalDateTime.of(2023, 9, 1, 13, 23, 19);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 4);
+    dt = (LocalDateTime) Transforms.add("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testSubdt() {
+    LocalDateTime dt = LocalDateTime.of(2023, 9, 5, 13, 23, 19);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 4);
+    dt = (LocalDateTime) Transforms.sub("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testGetzdt() {
+    ZonedDateTime dt = LocalDateTime.of(2023, 9, 1, 13, 23, 19).atZone(ZoneId.systemDefault());
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testSetzdt() {
+    ZonedDateTime dt = LocalDateTime.of(2023, 9, 1, 13, 23, 19).atZone(ZoneId.systemDefault());
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 5);
+    dt = (ZonedDateTime) Transforms.setdt("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testAddzdt() {
+    ZonedDateTime dt = LocalDateTime.of(2023, 9, 1, 13, 23, 19).atZone(ZoneId.systemDefault());
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 4);
+    dt = (ZonedDateTime) Transforms.add("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testSubzdt() {
+    ZonedDateTime dt = LocalDateTime.of(2023, 9, 5, 13, 23, 19).atZone(ZoneId.systemDefault());
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 4);
+    dt = (ZonedDateTime) Transforms.sub("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(13, Transforms.getdt("date", "hour").apply(o));
+    Assertions.assertEquals(23, Transforms.getdt("date", "minute").apply(o));
+    Assertions.assertEquals(19, Transforms.getdt("date", "second").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testGetld() {
+    LocalDate dt = LocalDate.of(2023, 9, 1);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testSetld() {
+    LocalDate dt = LocalDate.of(2023, 9, 1);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 5);
+    dt = (LocalDate) Transforms.setdt("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testAddld() {
+    LocalDate dt = LocalDate.of(2023, 9, 1);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 4);
+    dt = (LocalDate) Transforms.add("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+  }
+  
+  @Test public void testSubld() {
+    LocalDate dt = LocalDate.of(2023, 9, 5);
+    JsonObject o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(2, Transforms.getdt("date", "weekday").apply(o));
+    JsonArray a = JsonArray.of("day", 4);
+    dt = (LocalDate) Transforms.sub("date", a).apply(o);
+    o = JsonObject.of("date", dt);
+    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
   }
   
 }

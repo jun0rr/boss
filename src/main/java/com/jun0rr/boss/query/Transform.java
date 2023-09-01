@@ -70,8 +70,23 @@ public record Transform(String field, Object value, BiFunction<Object,Object,Obj
       },
       {
         field: <field1>,
-        x: <value>
+        todt: null,
+        add: [day, 5],
+        setdt: [year, 2024],
+        getdt: month,
+        
       }...
+    ],
+    stream:
+    {
+      field: <field0>
+      dt: null,
+      add: [day, 4],
+      gd: day,
+      ge: 5,
+      pw: 2,
+      ts: null
+    }
     ]
   }
   Filters:
@@ -112,6 +127,12 @@ public record Transform(String field, Object value, BiFunction<Object,Object,Obj
     - split (sp);
     - upper (up); //upper case
     - lower (lw); //lower case
+    - tostr (ts); //to string
+    - todt (sd); //string to LocalDateTime
+    - tozd (zd); //string to ZonedDateTime
+    - told (ld); //string to LocalDate
+    - getdt (gd); //get a date field [year, month, day, hour, minute, second, millis]
+    - setdt (gd); //set a date field [year, month, day, hour, minute, second, millis]
   */
   
 }

@@ -5,6 +5,15 @@
 package com.jun0rr.boss.query;
 
 import io.vertx.core.json.JsonArray;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAccessor;
+import java.util.Objects;
 
 /**
  *
@@ -14,10 +23,6 @@ public abstract class Transforms {
   
   public static Transform add(String field, Object value) {
     return new Transform(field, value, (a,b)->{
-      if(!Number.class.isAssignableFrom(a.getClass()) 
-          || !Number.class.isAssignableFrom(b.getClass())) {
-        return Double.NaN;
-      }
       if(Double.class.isAssignableFrom(a.getClass())
           || Double.class.isAssignableFrom(b.getClass())) {
         Double x = (Double) a;
@@ -36,16 +41,18 @@ public abstract class Transforms {
         Integer y = (Integer) b;
         return x.intValue() + y.intValue();
       }
+      else if(JsonArray.class.isAssignableFrom(a.getClass())
+          && Temporal.class.isAssignableFrom(b.getClass())) {
+        JsonArray x = (JsonArray) a;
+        Temporal y = (Temporal) b;
+        return y.plus(x.getLong(1), tempUnit(x.getString(0)));
+      }
       return Double.NaN;
     });
   }
   
   public static Transform sub(String field, Object value) {
     return new Transform(field, value, (a,b)->{
-      if(!Number.class.isAssignableFrom(a.getClass()) 
-          || !Number.class.isAssignableFrom(b.getClass())) {
-        return Double.NaN;
-      }
       if(Double.class.isAssignableFrom(a.getClass())
           || Double.class.isAssignableFrom(b.getClass())) {
         Double x = (Double) a;
@@ -63,6 +70,12 @@ public abstract class Transforms {
         Integer x = (Integer) a;
         Integer y = (Integer) b;
         return y.intValue() - x.intValue();
+      }
+      else if(JsonArray.class.isAssignableFrom(a.getClass())
+          && Temporal.class.isAssignableFrom(b.getClass())) {
+        JsonArray x = (JsonArray) a;
+        Temporal y = (Temporal) b;
+        return y.minus(x.getLong(1), tempUnit(x.getString(0)));
       }
       return Double.NaN;
     });
@@ -148,57 +161,27 @@ public abstract class Transforms {
   
   public static Transform max(String field, Object value) {
     return new Transform(field, value, (a,b)->{
-      if(!Number.class.isAssignableFrom(a.getClass()) 
-          || !Number.class.isAssignableFrom(b.getClass())) {
-        return Double.NaN;
+      if(Comparable.class.isAssignableFrom(a.getClass())
+          && Comparable.class.isAssignableFrom(b.getClass())) {
+        Comparable x = (Comparable) a;
+        Comparable y = (Comparable) b;
+        int r = y.compareTo(x);
+        return r >= 0 ? y : x;
       }
-      if(Double.class.isAssignableFrom(a.getClass())
-          || Double.class.isAssignableFrom(b.getClass())) {
-        Double x = (Double) a;
-        Double y = (Double) b;
-        return Math.max(y.doubleValue(), x.doubleValue());
-      }
-      else if(Long.class.isAssignableFrom(a.getClass())
-          || Long.class.isAssignableFrom(b.getClass())) {
-        Long x = (Long) a;
-        Long y = (Long) b;
-        return Math.max(y.longValue(), x.longValue());
-      }
-      else if(Integer.class.isAssignableFrom(a.getClass())
-          || Integer.class.isAssignableFrom(b.getClass())) {
-        Integer x = (Integer) a;
-        Integer y = (Integer) b;
-        return Math.max(y.intValue(), x.intValue());
-      }
-      return Double.NaN;
+      return false;
     });
   }
   
   public static Transform min(String field, Object value) {
     return new Transform(field, value, (a,b)->{
-      if(!Number.class.isAssignableFrom(a.getClass()) 
-          || !Number.class.isAssignableFrom(b.getClass())) {
-        return Double.NaN;
+      if(Comparable.class.isAssignableFrom(a.getClass())
+          && Comparable.class.isAssignableFrom(b.getClass())) {
+        Comparable x = (Comparable) a;
+        Comparable y = (Comparable) b;
+        int r = y.compareTo(x);
+        return r <= 0 ? y : x;
       }
-      if(Double.class.isAssignableFrom(a.getClass())
-          || Double.class.isAssignableFrom(b.getClass())) {
-        Double x = (Double) a;
-        Double y = (Double) b;
-        return Math.min(y.doubleValue(), x.doubleValue());
-      }
-      else if(Long.class.isAssignableFrom(a.getClass())
-          || Long.class.isAssignableFrom(b.getClass())) {
-        Long x = (Long) a;
-        Long y = (Long) b;
-        return Math.min(y.longValue(), x.longValue());
-      }
-      else if(Integer.class.isAssignableFrom(a.getClass())
-          || Integer.class.isAssignableFrom(b.getClass())) {
-        Integer x = (Integer) a;
-        Integer y = (Integer) b;
-        return Math.min(y.intValue(), x.intValue());
-      }
-      return Double.NaN;
+      return false;
     });
   }
   
@@ -324,6 +307,12 @@ public abstract class Transforms {
     });
   }
   
+  public static Transform tostr(String field, Object value) {
+    return new Transform(field, value, (a,b)->{
+      return Objects.toString(b);
+    });
+  }
+  
   public static Transform split(String field, Object value) {
     return new Transform(field, value, (a,b)->{
       if(!String.class.isAssignableFrom(a.getClass())
@@ -333,6 +322,89 @@ public abstract class Transforms {
       String x = (String) a;
       String y = (String) b;
       return JsonArray.of(y.split(x));
+    });
+  }
+  
+  public static Transform todt(String field, Object value) {
+    return new Transform(field, value, (a,b)->{
+      if(!String.class.isAssignableFrom(b.getClass())) {
+        return false;
+      }
+      String y = (String) b;
+      DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+      return LocalDateTime.parse(y, fmt);
+    });
+  }
+  
+  public static Transform told(String field, Object value) {
+    return new Transform(field, value, (a,b)->{
+      if(!String.class.isAssignableFrom(b.getClass())) {
+        return false;
+      }
+      String y = (String) b;
+      DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+      return LocalDate.parse(y, fmt);
+    });
+  }
+  
+  public static Transform tozd(String field, Object value) {
+    return new Transform(field, value, (a,b)->{
+      if(!String.class.isAssignableFrom(b.getClass())) {
+        return false;
+      }
+      String y = (String) b;
+      DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+      return LocalDateTime.parse(y, fmt).atZone(ZoneId.systemDefault());
+    });
+  }
+  
+  private static ChronoField chronoField(String field) {
+    return switch(field) {
+      case "year" -> ChronoField.YEAR;
+      case "day" -> ChronoField.DAY_OF_MONTH;
+      case "month" -> ChronoField.MONTH_OF_YEAR;
+      case "hour" -> ChronoField.HOUR_OF_DAY;
+      case "minute" -> ChronoField.MINUTE_OF_HOUR;
+      case "second" -> ChronoField.SECOND_OF_MINUTE;
+      case "weekday" -> ChronoField.DAY_OF_WEEK;
+      default -> null;
+    };
+  }
+  
+  private static ChronoUnit tempUnit(String field) {
+    return switch(field) {
+      case "year" -> ChronoUnit.YEARS;
+      case "day" -> ChronoUnit.DAYS;
+      case "month" -> ChronoUnit.MONTHS;
+      case "hour" -> ChronoUnit.HOURS;
+      case "minute" -> ChronoUnit.MINUTES;
+      case "second" -> ChronoUnit.SECONDS;
+      default -> null;
+    };
+  }
+  
+  public static Transform getdt(String field, Object value) {
+    return new Transform(field, value, (a,b)->{
+      if(!String.class.isAssignableFrom(a.getClass()) 
+          || !TemporalAccessor.class.isAssignableFrom(b.getClass())) {
+        return false;
+      }
+      String x = (String) a;
+      TemporalAccessor y = (TemporalAccessor) b;
+      return y.get(chronoField(x));
+    });
+  }
+  
+  public static Transform setdt(String field, Object value) {
+    return new Transform(field, value, (a,b)->{
+      if(!JsonArray.class.isAssignableFrom(a.getClass()) 
+          && !Temporal.class.isAssignableFrom(b.getClass())) {
+        System.out.printf("-> setdt: a.class=%s, b.class=%s%n", a.getClass(), b.getClass());
+        return false;
+      }
+      JsonArray x = (JsonArray) a;
+      Temporal y = (Temporal) b;
+      return y.with(chronoField(x.getString(0)), x.getLong(1));
     });
   }
   
