@@ -21,10 +21,15 @@ import org.junit.jupiter.api.Assertions;
 public class TestTransforms {
   
   @Test public void testAdd() {
+    try {
     double x = 5.5;
     JsonObject o = JsonObject.of("num", x);
     double y = 10.0;
     Assertions.assertEquals(x + y, Transforms.add("num", y).apply(o));
+    } catch(Throwable th) {
+      th.printStackTrace();
+      throw th;
+    }
   }
   
   @Test public void testSub() {
@@ -336,14 +341,14 @@ public class TestTransforms {
   }
   
   @Test public void testSetld() {
-    LocalDate dt = LocalDate.of(2023, 9, 1);
-    JsonObject o = JsonObject.of("date", dt);
-    Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
-    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));
-    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(o));
-    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(o));
+    //LocalDate dt = LocalDate.of(2023, 9, 1);
+    JsonObject o = JsonObject.of("date", "2023-09-01");
+    Assertions.assertEquals(2023, Transforms.getdt(null, "year").apply(Transforms.told("date", null).apply(o)));
+    Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(Transforms.told("date", null).apply(o)));
+    Assertions.assertEquals(1, Transforms.getdt("date", "day").apply(Transforms.told("date", null).apply(o)));
+    Assertions.assertEquals(5, Transforms.getdt("date", "weekday").apply(Transforms.told("date", null).apply(o)));
     JsonArray a = JsonArray.of("day", 5);
-    dt = (LocalDate) Transforms.setdt("date", a).apply(o);
+    LocalDate dt = (LocalDate) Transforms.setdt("date", a).apply(Transforms.told("date", null).apply(o));
     o = JsonObject.of("date", dt);
     Assertions.assertEquals(2023, Transforms.getdt("date", "year").apply(o));
     Assertions.assertEquals(9, Transforms.getdt("date", "month").apply(o));

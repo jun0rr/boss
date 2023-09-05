@@ -4,8 +4,6 @@
  */
 package com.jun0rr.boss.query;
 
-import io.vertx.core.json.JsonObject;
-import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -13,25 +11,11 @@ import java.util.function.Function;
  *
  * @author F6036477
  */
-public record Transform(String field, Object value, BiFunction<Object,Object,Object> function) implements Function<JsonObject,Object> {
+public record Transform(String field, Object value, BiFunction<Object,Object,Object> function) implements Function {
 
   @Override
-  public Object apply(JsonObject o) {
-    return function.apply(value, extract(o));
-  }
-  
-  protected Object extract(JsonObject o) {
-    List<String> names = List.of(field.split("\\."));
-    Object val = o;
-    for(String name : names) {
-      val = Either.of(val)
-          .ifNotNull()
-          .andIs(JsonObject.class)
-          .andIs(j->j.containsKey(name))
-          .thenMap(j->j.getValue(name))
-          .a();
-    }
-    return val;
+  public Object apply(Object o) {
+    return function.apply(value, JsonExtract.extract(field, o));
   }
   
   /*
