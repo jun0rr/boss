@@ -31,7 +31,7 @@ public class TestFileVolume {
       System.out.println(vc);
       Volume v = new FileVolume(vc);
       Block b = v.allocate(448);
-      System.out.println("allocated: " + b);
+      System.out.println("-> allocated: " + b);
       for(int i = 0; i < 100; i++) {
         b.buffer().putInt(i);
         System.out.printf("putInt( %d ): %s%n", i, b);
@@ -55,7 +55,7 @@ public class TestFileVolume {
       System.out.println("Volume.close()");
       Volume v1 = v;
       a.onDone(x->v1.close()).waitDone();
-      v.close();
+      //v.close();
       
       System.out.println("-----------------------------");
       v = new FileVolume(vc);

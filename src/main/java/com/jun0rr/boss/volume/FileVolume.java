@@ -7,14 +7,12 @@ package com.jun0rr.boss.volume;
 import com.jun0rr.boss.Block;
 import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.VolumeConfig;
-import com.jun0rr.pair.Pair;
 import com.jun0rr.uncheck.Uncheck;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 /**
@@ -101,20 +99,14 @@ public class FileVolume extends DefaultVolume {
   }
 
   @Override
-  public Volume commit(Block block) {
-    AtomicLong offset = new AtomicLong(block.offset());
-    AtomicLong nextOffset = new AtomicLong(0L);
-    System.out.printf("-> commit: %s, size=%d%n", block, block.buffer().byteBuffers().size());
-    block.buffer().byteBuffers().stream()
-        .peek(ByteBuffer::clear)
-        .peek(b->nextOffset.set(b.getLong()))
-        .peek(ByteBuffer::clear)
-        .map(b->Pair.of(b, offset.get()))
-        .peek(p->offset.set(nextOffset.get()))
-        //.peek(p->System.out.printf("* commit: %s%n", p))
-        //.limit(10) 
-        //.forEach(p->Uncheck.call(()->channel.write(p.key(), p.value())));
-        .forEach(p->System.out.printf(">>> %s%n", p));
+  public Volume commit(Block b) {
+    long nextOffset = b.offset();
+    do {
+      OffsetBuffer buf = getOffsetBuffer(nextOffset);
+      Uncheck.call(()->channel.write(buf.buffer().clear(), buf.offset()));
+      nextOffset = getNextOffset(buf);
+    }
+    while(nextOffset > 0 && nextOffset != b.offset());
     return this;
   }
 

@@ -21,6 +21,7 @@ import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.BossConfig;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
@@ -269,6 +270,16 @@ public class DefaultObjectStore implements ObjectStore {
   @Override
   public String toString() {
     return "ObjectStore{" + "volume=" + volume + ", index=" + index + '}';
+  }
+
+  @Override
+  public <T> Stream<Stored<T>> find(Class<T> c, Map<String, Object> values) {
+    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+  }
+
+  @Override
+  public <T, R> void createIndex(Class<T> c, Map<String, Function<T, R>> map) {
+    throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
   }
 
 }
