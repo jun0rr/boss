@@ -12,13 +12,13 @@ mapper:
     - com.jun0rr.binj.mapping.DefaultConstructStrategy
     - com.jun0rr.binj.mapping.AnnotationConstructStrategy
   extract:
-    - com.jun0rr.binj.mapping.GetterStrategy
-    - com.jun0rr.binj.mapping.FieldGetterStrategy
-    - com.jun0rr.binj.mapping.AnnotationExtractStrategy
+    - com.jun0rr.binj.mapping.GetterMethodStrategy
+    - com.jun0rr.binj.mapping.FieldGetStrategy
+    - com.jun0rr.binj.mapping.AnnotationGetStrategy
   inject:
-    - com.jun0rr.binj.mapping.SetterStrategy
-    - com.jun0rr.binj.mapping.FieldSetterStrategy
-    - com.jun0rr.binj.mapping.AnnotationInjectStrategy
+    - com.jun0rr.binj.mapping.SetterMethodStrategy
+    - com.jun0rr.binj.mapping.FieldSetStrategy
+    - com.jun0rr.binj.mapping.AnnotationSetStrategy
   codecs:
     - type: com.jun0rr.boss.Index
       codec: com.jun0rr.binj.codec.ObjectCodec

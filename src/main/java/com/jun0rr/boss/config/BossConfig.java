@@ -8,11 +8,11 @@ import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import com.jun0rr.binj.BinCodec;
 import com.jun0rr.binj.BinContext;
-import com.jun0rr.binj.mapping.CombinedStrategy;
 import com.jun0rr.binj.mapping.ConstructFunction;
 import com.jun0rr.binj.mapping.ExtractFunction;
 import com.jun0rr.binj.mapping.InjectFunction;
 import com.jun0rr.binj.mapping.InvokeStrategy;
+import com.jun0rr.indexed.Indexed;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
@@ -28,7 +28,6 @@ import java.util.Objects;
 public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
 
   public static BossConfig from(Map map) {
-    //System.out.printf("BossConfig.from: %s%n", map);
     Map vc = (Map) map.get("volume");
     if(vc == null) {
       throw new BossConfigException("Bad null BossConfig.volume");
@@ -66,11 +65,11 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     
     private final List<BinCodec> codecs;
     
-    private InvokeStrategy<ConstructFunction> mappingConstructStrategy;
+    private List<InvokeStrategy<ConstructFunction>> mappingConstructStrategy;
     
-    private InvokeStrategy<ExtractFunction> mappingExtractStrategy;
+    private List<InvokeStrategy<ExtractFunction>> mappingExtractStrategy;
     
-    private InvokeStrategy<InjectFunction> mappingInjectStrategy;
+    private List<InvokeStrategy<InjectFunction>> mappingInjectStrategy;
     
     private String volumeId;
     
@@ -79,6 +78,7 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     public Builder() {
       this.codecs = new LinkedList<>();
       this.bufferType = BufferConfig.Type.HEAP;
+      
     }
     
     public Builder addCodec(BinCodec codec) {
@@ -117,69 +117,30 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
       return this;
     }
 
-    public InvokeStrategy<ConstructFunction> getMappingConstructStrategy() {
+    public List<InvokeStrategy<ConstructFunction>> getMappingConstructStrategy() {
       return mappingConstructStrategy;
     }
 
-    public Builder setMappingConstructStrategy(InvokeStrategy<ConstructFunction> mappingConstructStrategy) {
-      this.mappingConstructStrategy = mappingConstructStrategy;
-      return this;
-    }
-    
-    public Builder addCombinedConstructStrategy(InvokeStrategy<ConstructFunction> is) {
-      Objects.requireNonNull(is);
-      if(mappingConstructStrategy == null 
-          || !CombinedStrategy.class.isAssignableFrom(mappingConstructStrategy.getClass())) {
-        mappingConstructStrategy = new CombinedStrategy<>();
-      }
-      CombinedStrategy<ConstructFunction> cs = (CombinedStrategy<ConstructFunction>)mappingConstructStrategy;
-      int maxWeigth = cs.strategies().keySet().stream()
-          .mapToInt(Integer::intValue).max().orElse(0);
-      cs.put(maxWeigth+1, is);
+    public Builder addConstructStrategy(InvokeStrategy<ConstructFunction> is) {
+      mappingConstructStrategy.add(Objects.requireNonNull(is));
       return this;
     }
 
-    public InvokeStrategy<ExtractFunction> getMappingExtractStrategy() {
+    public List<InvokeStrategy<ExtractFunction>> getMappingExtractStrategy() {
       return mappingExtractStrategy;
     }
 
-    public Builder setMappingExtractStrategy(InvokeStrategy<ExtractFunction> mappingExtractStrategy) {
-      this.mappingExtractStrategy = mappingExtractStrategy;
+    public Builder addExtractStrategy(InvokeStrategy<ExtractFunction> is) {
+      mappingExtractStrategy.add(Objects.requireNonNull(is));
       return this;
     }
 
-    public Builder addCombinedExtractStrategy(InvokeStrategy<ExtractFunction> is) {
-      Objects.requireNonNull(is);
-      if(mappingExtractStrategy == null 
-          || !CombinedStrategy.class.isAssignableFrom(mappingExtractStrategy.getClass())) {
-        mappingExtractStrategy = new CombinedStrategy<>();
-      }
-      CombinedStrategy<ExtractFunction> cs = (CombinedStrategy<ExtractFunction>)mappingExtractStrategy;
-      int maxWeigth = cs.strategies().keySet().stream()
-          .mapToInt(Integer::intValue).max().orElse(0);
-      cs.put(maxWeigth+1, is);
-      return this;
-    }
-
-    public InvokeStrategy<InjectFunction> getMappingInjectStrategy() {
+    public List<InvokeStrategy<InjectFunction>> getMappingInjectStrategy() {
       return mappingInjectStrategy;
     }
 
-    public Builder setMappingInjectStrategy(InvokeStrategy<InjectFunction> mappingInjectStrategy) {
-      this.mappingInjectStrategy = mappingInjectStrategy;
-      return this;
-    }
-
-    public Builder addCombinedInjectStrategy(InvokeStrategy<InjectFunction> is) {
-      Objects.requireNonNull(is);
-      if(mappingInjectStrategy == null 
-          || !CombinedStrategy.class.isAssignableFrom(mappingInjectStrategy.getClass())) {
-        mappingInjectStrategy = new CombinedStrategy<>();
-      }
-      CombinedStrategy<InjectFunction> cs = (CombinedStrategy<InjectFunction>)mappingInjectStrategy;
-      int maxWeigth = cs.strategies().keySet().stream()
-          .mapToInt(Integer::intValue).max().orElse(0);
-      cs.put(maxWeigth+1, is);
+    public Builder addInjectStrategy(InvokeStrategy<InjectFunction> is) {
+      mappingInjectStrategy.add(Objects.requireNonNull(is));
       return this;
     }
 
@@ -205,11 +166,21 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
       BufferConfig bc = new BufferConfig(bufferType, bufferSize, maxCacheSize);
       VolumeConfig vc = new VolumeConfig(volumeId, bc, volumeStorePath);
       BinContext ctx = BinContext.newContext();
-      codecs.forEach(c->ctx.putCodec(c));
-      ctx.mapper().constructStrategies().add(mappingConstructStrategy);
-      ctx.mapper().extractStrategies().add(mappingExtractStrategy);
-      ctx.mapper().injectStrategies().add(mappingInjectStrategy);
-      MapperConfig mc = new MapperConfig(mappingConstructStrategy, mappingExtractStrategy, mappingInjectStrategy, ctx);
+      codecs.forEach(c->ctx.putIfAbsent(c.bintype(), c));
+      mappingConstructStrategy.stream()
+          .map(Indexed.builder())
+          .forEach(i->ctx.mapper().constructStrategies().put(i.index(), i.value()));
+      mappingExtractStrategy.stream()
+          .map(Indexed.builder())
+          .forEach(i->ctx.mapper().extractStrategies().put(i.index(), i.value()));
+      mappingInjectStrategy.stream()
+          .map(Indexed.builder())
+          .forEach(i->ctx.mapper().injectStrategies().put(i.index(), i.value()));
+      MapperConfig mc = new MapperConfig(
+          ctx.mapper().constructStrategies(), 
+          ctx.mapper().extractStrategies(), 
+          ctx.mapper().injectStrategies(), ctx
+      );
       return new BossConfig(vc, mc);
     }
 

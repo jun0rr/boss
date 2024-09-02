@@ -5,8 +5,8 @@
 
 module Boss {
   requires jun0rr.indexed;
+  requires jun0rr.pair;
   requires jun0rr.uncheck;
   requires jun0rr.binj;
   requires yamlbeans;
-  requires io.vertx.core;
 }

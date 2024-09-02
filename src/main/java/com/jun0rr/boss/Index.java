@@ -31,8 +31,6 @@ public record Index(Map<Long,Long> idIndex, Map<BinType,List<Long>> classIndex, 
   }
   
   public static record IndexValue(long offset, Object value) implements Comparable<IndexValue> {
-
-
     @Override
     public int compareTo(IndexValue o) {
       int r = 0;

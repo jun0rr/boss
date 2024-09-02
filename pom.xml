@@ -7,8 +7,8 @@
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -19,35 +19,35 @@
         </dependency>
         <dependency>
             <groupId>com.jun0rr</groupId>
+            <artifactId>pair</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.jun0rr</groupId>
             <artifactId>uncheck</artifactId>
             <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>com.jun0rr</groupId>
             <artifactId>binj</artifactId>
-            <version>1.0</version>
+            <version>1.3</version>
         </dependency>
         <dependency>
             <groupId>com.esotericsoftware.yamlbeans</groupId>
             <artifactId>yamlbeans</artifactId>
-            <version>1.15</version>
-        </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-core</artifactId>
-            <version>4.4.3</version>
+            <version>1.17</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>5.6.0</version>
+            <version>5.11.0</version>
             <scope>test</scope>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.6.0</version>
+            <version>5.11.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -56,16 +56,15 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.13.0</version>
                 <configuration>
-                  <release>17</release>
+                  <release>21</release>
                   <debug>true</debug>
-                  <parameters>true</parameters>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.4.0</version>
                 <configuration>
                     <forkCount>0</forkCount>
                     <argLine>

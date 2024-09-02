@@ -5,18 +5,14 @@
 package com.jun0rr.boss.test;
 
 import com.jun0rr.binj.mapping.AnnotationConstructStrategy;
-import com.jun0rr.binj.mapping.AnnotationExtractStrategy;
-import com.jun0rr.binj.mapping.AnnotationInjectStrategy;
-import com.jun0rr.binj.mapping.CombinedStrategy;
-import com.jun0rr.binj.mapping.ConstructFunction;
+import com.jun0rr.binj.mapping.AnnotationGetStrategy;
+import com.jun0rr.binj.mapping.AnnotationSetStrategy;
 import com.jun0rr.binj.mapping.DefaultConstructStrategy;
-import com.jun0rr.binj.mapping.ExtractFunction;
-import com.jun0rr.binj.mapping.FieldGetterStrategy;
-import com.jun0rr.binj.mapping.FieldSetterStrategy;
+import com.jun0rr.binj.mapping.FieldGetStrategy;
+import com.jun0rr.binj.mapping.FieldSetStrategy;
 import com.jun0rr.binj.mapping.FieldsOrderConstructStrategy;
-import com.jun0rr.binj.mapping.GetterStrategy;
-import com.jun0rr.binj.mapping.InjectFunction;
-import com.jun0rr.binj.mapping.SetterStrategy;
+import com.jun0rr.binj.mapping.GetterMethodStrategy;
+import com.jun0rr.binj.mapping.SetterMethodStrategy;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.config.BufferConfig;
@@ -73,15 +69,15 @@ public class TestObjectStore {
     System.out.printf("---> testMemStore() <---%n");
     try {
       BossConfig config = BossConfig.builder()
-          .addCombinedConstructStrategy(new FieldsOrderConstructStrategy())
-          .addCombinedConstructStrategy(new DefaultConstructStrategy())
-          .addCombinedConstructStrategy(new AnnotationConstructStrategy())
-          .addCombinedExtractStrategy(new GetterStrategy())
-          .addCombinedExtractStrategy(new FieldGetterStrategy())
-          .addCombinedExtractStrategy(new AnnotationExtractStrategy())
-          .addCombinedInjectStrategy(new SetterStrategy())
-          .addCombinedInjectStrategy(new FieldSetterStrategy())
-          .addCombinedInjectStrategy(new AnnotationInjectStrategy())
+          .addConstructStrategy(new FieldsOrderConstructStrategy())
+          .addConstructStrategy(new DefaultConstructStrategy())
+          .addConstructStrategy(new AnnotationConstructStrategy())
+          .addExtractStrategy(new GetterMethodStrategy())
+          .addExtractStrategy(new FieldGetStrategy())
+          .addExtractStrategy(new AnnotationGetStrategy())
+          .addInjectStrategy(new SetterMethodStrategy())
+          .addInjectStrategy(new FieldSetStrategy())
+          .addInjectStrategy(new AnnotationSetStrategy())
           .setBufferSize(1024)
           .setBufferType(BufferConfig.Type.DIRECT)
           .setMaxCacheSize(4*1024*1024)

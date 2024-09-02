@@ -58,6 +58,7 @@ public record MapperConfig(
     if(es == null) {
       throw new BossConfigException("Bad null MapperConfig.extract");
     }
+    BinContext ctx = BinContext.newContext();
     List<String> is = (List)map.get("inject");
     NoArgsConstructStrategy nc = new NoArgsConstructStrategy();
     CombinedStrategy<ConstructFunction> construct = CombinedStrategy.newStrategy();
@@ -68,7 +69,7 @@ public record MapperConfig(
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ConstructFunction>)f)
         .map(Indexed.builder())
-        .forEach(i->construct.put(i.index(), i.value()));
+        .forEach(i->ctx.mapper().constructStrategies().put(i.index(), i.value()));
     CombinedStrategy<ExtractFunction> extract = CombinedStrategy.newStrategy();
     es.stream()
         .map(MapperConfig::ofClassName)
@@ -77,7 +78,7 @@ public record MapperConfig(
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ExtractFunction>)f)
         .map(Indexed.builder())
-        .forEach(i->extract.put(i.index(), i.value()));
+        .forEach(i->ctx.mapper().extractStrategies().put(i.index(), i.value()));
     CombinedStrategy<InjectFunction> inject = CombinedStrategy.newStrategy();
     ((List<String>)(is == null || is.isEmpty() ? Collections.EMPTY_LIST : is)).stream()
         .map(MapperConfig::ofClassName)
@@ -86,17 +87,13 @@ public record MapperConfig(
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<InjectFunction>)f)
         .map(Indexed.builder())
-        .forEach(i->inject.put(i.index(), i.value()));
+        .forEach(i->ctx.mapper().injectStrategies().put(i.index(), i.value()));
     List<Map> ts = (List) map.get("codecs");
-    BinContext ctx = BinContext.newContext();
-    ctx.mapper().constructStrategies().add(construct);
-    ctx.mapper().extractStrategies().add(extract);
-    ctx.mapper().injectStrategies().add(inject);
     ((List<Map>)(ts == null ? Collections.EMPTY_LIST : ts))
         .stream()
         .map(CodecConfig::from)
         .map(c->c.createCodec(ctx))
-        .forEach(c->ctx.putCodec(c));
+        .forEach(c->ctx.putIfAbsent(c.bintype(), c));
     return new MapperConfig(construct, extract, inject, ctx);
   }
   

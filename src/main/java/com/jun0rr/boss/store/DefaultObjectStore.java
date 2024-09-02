@@ -110,7 +110,7 @@ public class DefaultObjectStore implements ObjectStore {
     //System.out.printf("ObjectStore.updateValueIndex(%s): names=%s%n", entry.getKey().name(), names);
     for(String name : names) {
       final Class cls = val.getClass();
-      val = context.mapper().extractStrategies().stream()
+      val = context.mapper().extractStrategies().strategies().values().stream()
         .flatMap(s->s.invokers(cls).stream())
         .filter(f->f.name().equals(name))
         .findFirst().get().extract(val);
@@ -195,7 +195,7 @@ public class DefaultObjectStore implements ObjectStore {
         Object val = s.object();
         for(String name : names) {
           final Object ob = val;
-          val = context.mapper().extractStrategies().stream()
+          val = context.mapper().extractStrategies().strategies().values().stream()
             .flatMap(t->t.invokers(ob.getClass()).stream())
             .filter(f->f.name().equals(name))
             .findFirst().get().extract(val);
