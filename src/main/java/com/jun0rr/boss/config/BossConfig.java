@@ -25,7 +25,7 @@ import java.util.Objects;
  *
  * @author F6036477
  */
-public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
+public record BossConfig(VolumeConfig volume, ContextConfig context) {
 
   public static BossConfig from(Map map) {
     Map vc = (Map) map.get("volume");
@@ -36,7 +36,7 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     if(mc == null) {
       throw new BossConfigException("Bad null BossConfig.mapper");
     }
-    return new BossConfig(VolumeConfig.from(vc), MapperConfig.from(mc));
+    return new BossConfig(VolumeConfig.from(vc), ContextConfig.from(mc));
   }
   
   public static BossConfig from(InputStream is) {
@@ -77,6 +77,9 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
     
     public Builder() {
       this.codecs = new LinkedList<>();
+      this.mappingConstructStrategy = new LinkedList<>();
+      this.mappingExtractStrategy = new LinkedList<>();
+      this.mappingInjectStrategy = new LinkedList<>();
       this.bufferType = BufferConfig.Type.HEAP;
       
     }
@@ -176,11 +179,7 @@ public record BossConfig(VolumeConfig volume, MapperConfig mapper) {
       mappingInjectStrategy.stream()
           .map(Indexed.builder())
           .forEach(i->ctx.mapper().injectStrategies().put(i.index(), i.value()));
-      MapperConfig mc = new MapperConfig(
-          ctx.mapper().constructStrategies(), 
-          ctx.mapper().extractStrategies(), 
-          ctx.mapper().injectStrategies(), ctx
-      );
+      ContextConfig mc = new ContextConfig(ctx);
       return new BossConfig(vc, mc);
     }
 

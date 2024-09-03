@@ -9,6 +9,7 @@ import com.jun0rr.binj.mapping.AnnotationGetStrategy;
 import com.jun0rr.binj.mapping.AnnotationSetStrategy;
 import com.jun0rr.binj.mapping.DefaultConstructStrategy;
 import com.jun0rr.binj.mapping.FieldGetStrategy;
+import com.jun0rr.binj.mapping.FieldMethodGetStrategy;
 import com.jun0rr.binj.mapping.FieldSetStrategy;
 import com.jun0rr.binj.mapping.FieldsOrderConstructStrategy;
 import com.jun0rr.binj.mapping.GetterMethodStrategy;
@@ -40,6 +41,8 @@ public class TestObjectStore {
       Path path = Paths.get("./TestObjectStore.bin");
       Uncheck.call(()->Files.deleteIfExists(path));
       BossConfig config = BossConfig.from(TestObjectStore.class.getResourceAsStream("/boss.yml"));
+      config.context().context().mapper().constructStrategies().invokers(Person.class).stream()
+          .forEach(x->System.out.printf("* config.mapper.construct.invokers: %s%n", x));
       ObjectStore store = new DefaultObjectStore(config);
       System.out.println(store);
       for(int i = 0; i < 10; i++) {
@@ -72,8 +75,8 @@ public class TestObjectStore {
           .addConstructStrategy(new FieldsOrderConstructStrategy())
           .addConstructStrategy(new DefaultConstructStrategy())
           .addConstructStrategy(new AnnotationConstructStrategy())
+          .addExtractStrategy(new FieldMethodGetStrategy())
           .addExtractStrategy(new GetterMethodStrategy())
-          .addExtractStrategy(new FieldGetStrategy())
           .addExtractStrategy(new AnnotationGetStrategy())
           .addInjectStrategy(new SetterMethodStrategy())
           .addInjectStrategy(new FieldSetStrategy())

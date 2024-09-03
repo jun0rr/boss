@@ -48,7 +48,7 @@ public class DefaultObjectStore implements ObjectStore {
   public DefaultObjectStore(BossConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
     this.volume = config.volume().createVolume();
-    this.context = config.mapper().context();
+    this.context = config.context().context();
     this.index = new Index();
     load();
   }
@@ -147,7 +147,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p) {
     return index.findIndexByType(c).mapToObj(volume::get)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
-        .peek(System.out::println)
+        //.peek(System.out::println)
         .filter(s->p.test(s.object()));
   }
 
@@ -155,7 +155,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T, V> Stream<Stored<T>> find(Class<T> c, String name, V v) {
     return index.findIndexByValue(c, name, v)
         .mapToObj(volume::get)
-        .peek(System.out::println)
+        //.peek(System.out::println)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())));
   }
 

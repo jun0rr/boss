@@ -56,7 +56,6 @@ public class FileVolume extends DefaultVolume {
         int size = b.buffer().getInt();
         IntStream.range(0, size)
             .forEach(i->freebufs.add(b.buffer().getLong()));
-        //System.out.printf("Volume.loadMetadata: woffset=%d, metaidx=%d, freebufs=%s%n", woffset.get(), metaidx.get(), freebufs);
       }
     }
   }
@@ -67,13 +66,11 @@ public class FileVolume extends DefaultVolume {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
     Cached<OffsetBuffer> ob = cache.get(offset);
-    System.out.printf("FileVolume.getOffsetBuffer( %d ): %s%n", offset, ob);
     if(ob == null) {
       ByteBuffer bb = malloc.alloc();
       Uncheck.call(()->channel.read(bb, offset));
       ob = putCached(OffsetBuffer.of(offset, bb));
     }
-    //System.out.printf("FileVolume.getOffsetBuffer(%d): %s%n", offset, ob);
     return ob.content();
   }
   
@@ -100,9 +97,11 @@ public class FileVolume extends DefaultVolume {
 
   @Override
   public Volume commit(Block b) {
+    System.out.printf("-> FileVolume.commit: %s%n", b);
     long nextOffset = b.offset();
     do {
       OffsetBuffer buf = getOffsetBuffer(nextOffset);
+      System.out.printf("  - %s%n", buf);
       Uncheck.call(()->channel.write(buf.buffer().clear(), buf.offset()));
       nextOffset = getNextOffset(buf);
     }

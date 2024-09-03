@@ -12,9 +12,9 @@ mapper:
     - com.jun0rr.binj.mapping.DefaultConstructStrategy
     - com.jun0rr.binj.mapping.AnnotationConstructStrategy
   extract:
-    - com.jun0rr.binj.mapping.GetterStrategy
-    - com.jun0rr.binj.mapping.FieldGetterStrategy
-    - com.jun0rr.binj.mapping.AnnotationExtractStrategy
+    - com.jun0rr.binj.mapping.FieldMethodGetStrategy
+    - com.jun0rr.binj.mapping.GetterMethodStrategy
+    - com.jun0rr.binj.mapping.AnnotationGetStrategy
   inject:
     - com.jun0rr.binj.mapping.SetterStrategy
     - com.jun0rr.binj.mapping.FieldSetterStrategy

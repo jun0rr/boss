@@ -15,30 +15,12 @@ import com.jun0rr.indexed.Indexed;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  *
  * @author F6036477
  */
-public record MapperConfig(
-    InvokeStrategy<ConstructFunction> construct, 
-    InvokeStrategy<ExtractFunction> extract, 
-    InvokeStrategy<InjectFunction> inject,
-    BinContext context
-) {
-  
-  public MapperConfig(
-      InvokeStrategy<ConstructFunction> construct, 
-      InvokeStrategy<ExtractFunction> extract, 
-      InvokeStrategy<InjectFunction> inject
-  ) {
-    this(Objects.requireNonNull(construct),
-        Objects.requireNonNull(extract),
-        Objects.requireNonNull(inject),
-        BinContext.newContext()
-    );
-  }
+public record ContextConfig(BinContext context) {
   
   public static Class ofClassName(String name) {
     try {
@@ -49,7 +31,7 @@ public record MapperConfig(
     }
   }
   
-  public static MapperConfig from(Map map) {
+  public static ContextConfig from(Map map) {
     List<String> cs = (List) map.get("construct");
     if(cs == null) {
       throw new BossConfigException("Bad null MapperConfig.construct");
@@ -61,32 +43,33 @@ public record MapperConfig(
     BinContext ctx = BinContext.newContext();
     List<String> is = (List)map.get("inject");
     NoArgsConstructStrategy nc = new NoArgsConstructStrategy();
-    CombinedStrategy<ConstructFunction> construct = CombinedStrategy.newStrategy();
     cs.stream()
-        .map(MapperConfig::ofClassName)
+        .map(ContextConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ConstructFunction>)f)
         .map(Indexed.builder())
+        .peek(i->System.out.printf("-> MapperConfig.constructors: %s%n", i))
         .forEach(i->ctx.mapper().constructStrategies().put(i.index(), i.value()));
     CombinedStrategy<ExtractFunction> extract = CombinedStrategy.newStrategy();
     es.stream()
-        .map(MapperConfig::ofClassName)
+        .map(ContextConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ExtractFunction>)f)
         .map(Indexed.builder())
+        .peek(i->System.out.printf("-> MapperConfig.extractors: %s%n", i))
         .forEach(i->ctx.mapper().extractStrategies().put(i.index(), i.value()));
-    CombinedStrategy<InjectFunction> inject = CombinedStrategy.newStrategy();
     ((List<String>)(is == null || is.isEmpty() ? Collections.EMPTY_LIST : is)).stream()
-        .map(MapperConfig::ofClassName)
+        .map(ContextConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<InjectFunction>)f)
         .map(Indexed.builder())
+        .peek(i->System.out.printf("-> MapperConfig.injectors: %s%n", i))
         .forEach(i->ctx.mapper().injectStrategies().put(i.index(), i.value()));
     List<Map> ts = (List) map.get("codecs");
     ((List<Map>)(ts == null ? Collections.EMPTY_LIST : ts))
@@ -94,7 +77,7 @@ public record MapperConfig(
         .map(CodecConfig::from)
         .map(c->c.createCodec(ctx))
         .forEach(c->ctx.putIfAbsent(c.bintype(), c));
-    return new MapperConfig(construct, extract, inject, ctx);
+    return new ContextConfig(ctx);
   }
   
 }
