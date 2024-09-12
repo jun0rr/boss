@@ -6,30 +6,36 @@ package com.jun0rr.boss.access;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  *
  * @author F6036477
  */
-public record Rule(String name, List<Role> roles, List<Subject> subjects) {
+public record Rule(String name, List<Subject> subjects, List<Permission> permissions) {
   
   public Rule(String name) {
     this(name, new LinkedList<>(), new LinkedList<>());
   }
   
-  public Rule add(Role r) {
-    roles.add(Objects.requireNonNull(r));
+  public Rule add(Permission p) {
+    if(p != null && !permissions.contains(p)) {
+      permissions.add(p);
+    }
     return this;
   }
   
   public Rule add(Subject s) {
-    subjects.add(Objects.requireNonNull(s));
+    if(s != null && !subjects.contains(s)) {
+      subjects.add(s);
+    }
     return this;
   }
   
-  public boolean match(String uri, Method m, BossUser u) {
-    
+  public boolean match(Subject s, Permission p) {
+    return subjects.contains(s) 
+        && (permissions.contains(p)
+        || permissions.contains(Permission.ALL))
+        && !permissions.contains(Permission.DENY);
   }
   
 }

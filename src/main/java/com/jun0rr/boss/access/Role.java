@@ -13,41 +13,38 @@ import java.util.function.Predicate;
  *
  * @author F6036477
  */
-public record Role(Class clazz, Predicate test, List<Permission> permissions) {
+public record Role(Class clazz, Predicate test, List<Rule> rules) {
   
   public Role {
     Objects.requireNonNull(clazz, "Class cannot be null");
     Objects.requireNonNull(test, "Test predicate cannot be null");
-    Objects.requireNonNull(permissions, "Permissions list cannot be null");
+    Objects.requireNonNull(rules, "Permissions list cannot be null");
   }
   
   public Role(Class clazz) {
     this(clazz, x->true, new LinkedList<>());
   }
   
-  public Role(Class clazz, Permission... ps) {
-    this(clazz, x->true, List.of(Objects.requireNonNull(ps)));
+  public Role(Class clazz, Rule... rs) {
+    this(clazz, x->true, List.of(Objects.requireNonNull(rs)));
   }
   
-  public Role add(Permission p) {
-    if(p != null && !permissions.contains(p)) {
-      permissions.add(p);
+  public Role add(Rule r) {
+    if(r != null && !rules.contains(r)) {
+      rules.add(r);
     }
     return this;
   }
   
-  public boolean match(Object o, Permission p) {
-    return o != null && match(o.getClass(), p);
+  public boolean match(Object o, Subject s, Permission p) {
+    return o != null 
+        && test.test(o) 
+        && match(o.getClass(), s, p);
   }
   
-  public boolean match(Class c, Permission p) {
-    return c != null 
-        && clazz.isAssignableFrom(c) 
-        && !permissions.contains(Permission.DENY) 
-        && (
-          permissions.contains(Permission.ALL)
-          || permissions.contains(p)
-        );
+  public boolean match(Class c, Subject s, Permission p) {
+    return clazz.isAssignableFrom(c) 
+        && rules.stream().anyMatch(r->r.match(s, p));
   }
   
 }

@@ -25,7 +25,7 @@ import java.util.Objects;
  *
  * @author F6036477
  */
-public record BossConfig(VolumeConfig volume, ContextConfig context) {
+public record BossConfig(VolumeConfig volume, MappingConfig mapping) {
 
   public static BossConfig from(Map map) {
     Map vc = (Map) map.get("volume");
@@ -36,7 +36,7 @@ public record BossConfig(VolumeConfig volume, ContextConfig context) {
     if(mc == null) {
       throw new BossConfigException("Bad null BossConfig.mapper");
     }
-    return new BossConfig(VolumeConfig.from(vc), ContextConfig.from(mc));
+    return new BossConfig(VolumeConfig.from(vc), MappingConfig.from(mc));
   }
   
   public static BossConfig from(InputStream is) {
@@ -179,7 +179,7 @@ public record BossConfig(VolumeConfig volume, ContextConfig context) {
       mappingInjectStrategy.stream()
           .map(Indexed.builder())
           .forEach(i->ctx.mapper().injectStrategies().put(i.index(), i.value()));
-      ContextConfig mc = new ContextConfig(ctx);
+      MappingConfig mc = new MappingConfig(ctx);
       return new BossConfig(vc, mc);
     }
 

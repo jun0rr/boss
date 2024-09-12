@@ -8,7 +8,6 @@ import com.jun0rr.binj.mapping.AnnotationConstructStrategy;
 import com.jun0rr.binj.mapping.AnnotationGetStrategy;
 import com.jun0rr.binj.mapping.AnnotationSetStrategy;
 import com.jun0rr.binj.mapping.DefaultConstructStrategy;
-import com.jun0rr.binj.mapping.FieldGetStrategy;
 import com.jun0rr.binj.mapping.FieldMethodGetStrategy;
 import com.jun0rr.binj.mapping.FieldSetStrategy;
 import com.jun0rr.binj.mapping.FieldsOrderConstructStrategy;
@@ -18,8 +17,6 @@ import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.config.BufferConfig;
 import com.jun0rr.boss.store.DefaultObjectStore;
-import com.jun0rr.boss.test.record.Address;
-import com.jun0rr.boss.test.record.Person;
 import com.jun0rr.uncheck.Uncheck;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,7 +38,7 @@ public class TestObjectStore {
       Path path = Paths.get("./TestObjectStore.bin");
       Uncheck.call(()->Files.deleteIfExists(path));
       BossConfig config = BossConfig.from(TestObjectStore.class.getResourceAsStream("/boss.yml"));
-      config.context().context().mapper().constructStrategies().invokers(Person.class).stream()
+      config.mapping().context().mapper().constructStrategies().invokers(Person.class).stream()
           .forEach(x->System.out.printf("* config.mapper.construct.invokers: %s%n", x));
       ObjectStore store = new DefaultObjectStore(config);
       System.out.println(store);
@@ -110,5 +107,9 @@ public class TestObjectStore {
       throw e;
     }
   }
+  
+  public static record Person(String name, String last, LocalDate birth, Address address) {}
+  
+  public static record Address(String street, String city, int number) {}
   
 }

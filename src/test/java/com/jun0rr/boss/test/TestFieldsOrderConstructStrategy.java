@@ -21,7 +21,7 @@ public class TestFieldsOrderConstructStrategy {
     BinContext ctx = BinContext.newContext();
     ctx.mapper().constructStrategies().put(0, new FieldsOrderConstructStrategy());
     ctx.mapper().extractStrategies().put(0, new FieldMethodGetStrategy());
-    Person p = new Person("John", "Doe", LocalDate.now(), new Address("Foo Street", "Bar City", 4004), new long[]{0, 1});
+    Person p = new Person("John", "Doe", LocalDate.now(), new Address("Foo Street", "Bar City", 4004));
     System.out.printf("* person: %s%n", p);
     BinBuffer buf = BinBuffer.ofDirectAllocator(64);
     System.out.printf("* calcSise: %d%n", ctx.calcSize(p));
@@ -30,5 +30,9 @@ public class TestFieldsOrderConstructStrategy {
     p = ctx.read(buf.flip());
     System.out.printf("* person: %s%n", p);
   }
+  
+  public static record Person(String name, String last, LocalDate birth, Address address) {}
+  
+  public static record Address(String street, String city, int number) {}
   
 }

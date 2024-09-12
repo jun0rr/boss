@@ -43,10 +43,10 @@ public record CodecConfig(Class type, Class codec) {
     if(st == null) {
       throw new IllegalArgumentException("Required key ['type'] not found in " + map);
     }
-    Class type = ContextConfig.ofClassName(st);
+    Class type = MappingConfig.ofClassName(st);
     Class codec;
     if(sc != null) {
-      codec = ContextConfig.ofClassName(sc);
+      codec = MappingConfig.ofClassName(sc);
     }
     else {
       if(type.isEnum()) {

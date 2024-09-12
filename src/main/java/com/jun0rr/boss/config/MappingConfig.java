@@ -20,7 +20,7 @@ import java.util.Map;
  *
  * @author F6036477
  */
-public record ContextConfig(BinContext context) {
+public record MappingConfig(BinContext context) {
   
   public static Class ofClassName(String name) {
     try {
@@ -31,7 +31,7 @@ public record ContextConfig(BinContext context) {
     }
   }
   
-  public static ContextConfig from(Map map) {
+  public static MappingConfig from(Map map) {
     List<String> cs = (List) map.get("construct");
     if(cs == null) {
       throw new BossConfigException("Bad null MapperConfig.construct");
@@ -44,7 +44,7 @@ public record ContextConfig(BinContext context) {
     List<String> is = (List)map.get("inject");
     NoArgsConstructStrategy nc = new NoArgsConstructStrategy();
     cs.stream()
-        .map(ContextConfig::ofClassName)
+        .map(MappingConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
@@ -54,7 +54,7 @@ public record ContextConfig(BinContext context) {
         .forEach(i->ctx.mapper().constructStrategies().put(i.index(), i.value()));
     CombinedStrategy<ExtractFunction> extract = CombinedStrategy.newStrategy();
     es.stream()
-        .map(ContextConfig::ofClassName)
+        .map(MappingConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
@@ -63,7 +63,7 @@ public record ContextConfig(BinContext context) {
         .peek(i->System.out.printf("-> MapperConfig.extractors: %s%n", i))
         .forEach(i->ctx.mapper().extractStrategies().put(i.index(), i.value()));
     ((List<String>)(is == null || is.isEmpty() ? Collections.EMPTY_LIST : is)).stream()
-        .map(ContextConfig::ofClassName)
+        .map(MappingConfig::ofClassName)
         .map(nc::invokers)
         .flatMap(List::stream)
         .map(ConstructFunction::create)
@@ -77,7 +77,7 @@ public record ContextConfig(BinContext context) {
         .map(CodecConfig::from)
         .map(c->c.createCodec(ctx))
         .forEach(c->ctx.putIfAbsent(c.bintype(), c));
-    return new ContextConfig(ctx);
+    return new MappingConfig(ctx);
   }
   
 }
