@@ -4,9 +4,15 @@
  */
 package com.jun0rr.boss.access;
 
+import com.jun0rr.uncheck.Uncheck;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 /**
  *
@@ -32,6 +38,25 @@ public record BossUser(String name, long salt, byte[] hash, List<BossGroup> grou
       groups.add(g);
     }
     return this;
+  }
+  
+  public boolean auth(String password) {
+    ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
+    buf.putLong(salt);
+    MessageDigest md = Uncheck.call(()->MessageDigest.getInstance("SHA-1"));
+    md.update(buf.flip());
+    md.update(StandardCharsets.UTF_8.encode(password));
+    return Arrays.equals(hash, md.digest());
+  }
+  
+  public static BossUser createUser(String name, String password) {
+    ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
+    long salt = new Random().nextLong();
+    buf.putLong(salt);
+    MessageDigest md = Uncheck.call(()->MessageDigest.getInstance("SHA-1"));
+    md.update(buf.flip());
+    md.update(StandardCharsets.UTF_8.encode(password));
+    return new BossUser(name, salt, md.digest());
   }
   
 }
