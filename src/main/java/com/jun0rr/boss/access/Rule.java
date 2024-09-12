@@ -4,7 +4,6 @@
  */
 package com.jun0rr.boss.access;
 
-import com.jun0rr.boss.access.Role.Method;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -13,7 +12,7 @@ import java.util.Objects;
  *
  * @author F6036477
  */
-public record Rule(String name, List<Role> roles, List<BossGroup> groups) {
+public record Rule(String name, List<Role> roles, List<Subject> subjects) {
   
   public Rule(String name) {
     this(name, new LinkedList<>(), new LinkedList<>());
@@ -24,8 +23,8 @@ public record Rule(String name, List<Role> roles, List<BossGroup> groups) {
     return this;
   }
   
-  public Rule add(BossGroup g) {
-    groups.add(Objects.requireNonNull(g));
+  public Rule add(Subject s) {
+    subjects.add(Objects.requireNonNull(s));
     return this;
   }
   

@@ -15,6 +15,12 @@ import java.util.function.Predicate;
  */
 public record Role(Class clazz, Predicate test, List<Permission> permissions) {
   
+  public Role {
+    Objects.requireNonNull(clazz, "Class cannot be null");
+    Objects.requireNonNull(test, "Test predicate cannot be null");
+    Objects.requireNonNull(permissions, "Permissions list cannot be null");
+  }
+  
   public Role(Class clazz) {
     this(clazz, x->true, new LinkedList<>());
   }
@@ -31,11 +37,17 @@ public record Role(Class clazz, Predicate test, List<Permission> permissions) {
   }
   
   public boolean match(Object o, Permission p) {
-    return o != null && clazz.isAssignableFrom(o.getClass()) && test.test(o) && permissions.contains(p);
+    return o != null && match(o.getClass(), p);
   }
   
   public boolean match(Class c, Permission p) {
-    return c != null && clazz.isAssignableFrom(c) && permissions.contains(p);
+    return c != null 
+        && clazz.isAssignableFrom(c) 
+        && !permissions.contains(Permission.DENY) 
+        && (
+          permissions.contains(Permission.ALL)
+          || permissions.contains(p)
+        );
   }
   
 }

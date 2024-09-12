@@ -4,10 +4,16 @@
  */
 package com.jun0rr.boss.access;
 
+import java.util.Objects;
+
 /**
  *
  * @author F6036477
  */
 public record BossGroup(String name) implements Subject {
+  
+  public BossGroup {
+    Objects.requireNonNull(name, "Name cannot be null");
+  }
   
 }

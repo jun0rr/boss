@@ -10,6 +10,6 @@ package com.jun0rr.boss.access;
  */
 public enum Permission {
   
-  READ, WRITE, UPDATE, DELETE, INDEX, NONE
+  READ, WRITE, UPDATE, DELETE, INDEX, DENY, ALL
   
 }
