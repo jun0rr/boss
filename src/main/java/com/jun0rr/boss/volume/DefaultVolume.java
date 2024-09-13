@@ -53,6 +53,12 @@ public class DefaultVolume implements Volume {
   }
   
   protected Cached<OffsetBuffer> putCached(OffsetBuffer o) {
+    long maxCacheSize = config.buffer().maxCacheSize();
+    long curCacheSize = cache.values().stream()
+        .map(Cached::content)
+        .mapToLong(b->b.buffer().capacity())
+        .sum();
+    System.out.printf("* DefaultVolume.cache: maxCacheSize=%d, curCacheSize=%d%n", maxCacheSize, curCacheSize);
     if(cache.values().stream()
         .map(Cached::content)
         .mapToLong(b->b.buffer().capacity())
@@ -182,6 +188,9 @@ public class DefaultVolume implements Volume {
     if(offset < 0 || offset >= woffset.get()) {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
+    System.out.printf("* Volume.cache: %d%n", cache.size());
+    cache.entrySet().stream()
+        .forEach(e->System.out.printf("  -> %d: %s%n", e.getKey(), e.getValue().content()));
     List<ByteBuffer> bufs = new LinkedList<>();
     OffsetBuffer buf = null;
     long nextOffset = offset;

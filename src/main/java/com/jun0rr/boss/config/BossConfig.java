@@ -167,6 +167,7 @@ public record BossConfig(VolumeConfig volume, MappingConfig mapping) {
     
     public BossConfig build() {
       BufferConfig bc = new BufferConfig(bufferType, bufferSize, maxCacheSize);
+      System.out.printf("* BossConfig.bufferConfig: maxCacheSize=%d, %s%n", this.maxCacheSize, bc);
       VolumeConfig vc = new VolumeConfig(volumeId, bc, volumeStorePath);
       BinContext ctx = BinContext.newContext();
       codecs.forEach(c->ctx.putIfAbsent(c.bintype(), c));

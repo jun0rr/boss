@@ -48,6 +48,7 @@ public class DefaultObjectStore implements ObjectStore {
   public DefaultObjectStore(BossConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
     this.volume = config.volume().createVolume();
+    System.out.printf("* DefaultObjectStore.volumeConfig: %s%n", config.volume());
     this.context = config.mapping().context();
     this.index = new Index();
     load();
@@ -214,6 +215,7 @@ public class DefaultObjectStore implements ObjectStore {
   public <T, R> void createIndex(Class<T> c, String name, Function<T, R> fn) {
     IndexType t = new IndexType(context.getBinType(c), name);
     List<IndexValue> ls = new CopyOnWriteArrayList<>();
+    
     index.findIndexByType(c)
         .mapToObj(volume::get)
         .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
