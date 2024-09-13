@@ -43,7 +43,7 @@ public record BossUser(String name, long salt, byte[] hash, List<BossGroup> grou
   public boolean auth(String password) {
     ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
     buf.putLong(salt);
-    MessageDigest md = Uncheck.call(()->MessageDigest.getInstance("SHA-1"));
+    MessageDigest md = Uncheck.call(()->MessageDigest.getInstance(SHA1));
     md.update(buf.flip());
     md.update(StandardCharsets.UTF_8.encode(password));
     return Arrays.equals(hash, md.digest());
@@ -53,10 +53,12 @@ public record BossUser(String name, long salt, byte[] hash, List<BossGroup> grou
     ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
     long salt = new Random().nextLong();
     buf.putLong(salt);
-    MessageDigest md = Uncheck.call(()->MessageDigest.getInstance("SHA-1"));
+    MessageDigest md = Uncheck.call(()->MessageDigest.getInstance(SHA1));
     md.update(buf.flip());
     md.update(StandardCharsets.UTF_8.encode(password));
     return new BossUser(name, salt, md.digest());
   }
+  
+  public static String SHA1 = "SHA-1";
   
 }

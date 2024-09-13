@@ -50,7 +50,7 @@ public record MappingConfig(BinContext context) {
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ConstructFunction>)f)
         .map(Indexed.builder())
-        .peek(i->System.out.printf("-> MapperConfig.constructors: %s%n", i))
+        //.peek(i->System.out.printf("-> MapperConfig.constructors: %s%n", i))
         .forEach(i->ctx.mapper().constructStrategies().put(i.index(), i.value()));
     CombinedStrategy<ExtractFunction> extract = CombinedStrategy.newStrategy();
     es.stream()
@@ -60,7 +60,7 @@ public record MappingConfig(BinContext context) {
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<ExtractFunction>)f)
         .map(Indexed.builder())
-        .peek(i->System.out.printf("-> MapperConfig.extractors: %s%n", i))
+        //.peek(i->System.out.printf("-> MapperConfig.extractors: %s%n", i))
         .forEach(i->ctx.mapper().extractStrategies().put(i.index(), i.value()));
     ((List<String>)(is == null || is.isEmpty() ? Collections.EMPTY_LIST : is)).stream()
         .map(MappingConfig::ofClassName)
@@ -69,7 +69,7 @@ public record MappingConfig(BinContext context) {
         .map(ConstructFunction::create)
         .map(f->(InvokeStrategy<InjectFunction>)f)
         .map(Indexed.builder())
-        .peek(i->System.out.printf("-> MapperConfig.injectors: %s%n", i))
+        //.peek(i->System.out.printf("-> MapperConfig.injectors: %s%n", i))
         .forEach(i->ctx.mapper().injectStrategies().put(i.index(), i.value()));
     List<Map> ts = (List) map.get("codecs");
     ((List<Map>)(ts == null ? Collections.EMPTY_LIST : ts))

@@ -13,6 +13,7 @@ import com.jun0rr.binj.mapping.FieldSetStrategy;
 import com.jun0rr.binj.mapping.FieldsOrderConstructStrategy;
 import com.jun0rr.binj.mapping.GetterMethodStrategy;
 import com.jun0rr.binj.mapping.SetterMethodStrategy;
+import com.jun0rr.boss.Boss;
 import com.jun0rr.boss.ObjectStore;
 import com.jun0rr.boss.config.BossConfig;
 import com.jun0rr.boss.config.BufferConfig;
@@ -80,12 +81,13 @@ public class TestObjectStore {
           .addInjectStrategy(new AnnotationSetStrategy())
           .setBufferSize(1024)
           .setBufferType(BufferConfig.Type.DIRECT)
-          .setMaxCacheSize(4*1024*1024)
+          .setMaxCacheSize(4*1024*1024*1024)
           .setVolumeId("memVolume")
           .build()
           ;
       System.out.println(config);
-      ObjectStore store = new DefaultObjectStore(config);
+      //ObjectStore store = new DefaultObjectStore(config);
+      ObjectStore store = Boss.objectStore(config);
       System.out.println(store);
       for(int i = 0; i < 10; i++) {
         Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
