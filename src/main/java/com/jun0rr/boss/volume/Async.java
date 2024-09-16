@@ -111,9 +111,7 @@ public class Async<T> {
   }
   
   public Async<T> waitDone() {
-    System.out.printf("Async.waitDone(1): countdown=%s%n", countdown);
     Uncheck.call(()->countdown.await());
-    System.out.printf("Async.waitDone(2): Done!%n");
     return this;
   }
   

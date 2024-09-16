@@ -1,0 +1,10 @@
+
+---> testMemStore() <---
+ObjectStore{volume=Volume{freebufs=[], woffset=1024, metaidx=-1, VolumeConfig[id=DefaultMemoryObjectStore, buffer=BufferConfig[type=DIRECT, size=1024, maxCacheSize=2147483648], storePath=null]}, index=Index[idIndex={}, classIndex={}, valueIndex={}]}
+Stored[id=2631683842, offset=6144, object=Person[name=John-5, last=Doe-5, birth=2024-09-16, address=Address[street=Street-6, city=City-6, number=105]]]
+* 0d-00h:04m:09s.804ms / 249.804ms
+* 0d-00h:00m:13s.561ms / 13.561ms
+* 0d-00h:00m:03s.534ms / 3.534ms
+* store total time: 0d-00h:04m:26s.900ms / 266.900ms
+* find total time: 0d-00h:02m:11s.616ms / 131.616ms
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 399.1 s -- in com.jun0rr.boss.test.TestObjectStore

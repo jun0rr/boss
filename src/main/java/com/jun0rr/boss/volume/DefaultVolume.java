@@ -58,7 +58,6 @@ public class DefaultVolume implements Volume {
         .map(Cached::content)
         .mapToLong(b->b.buffer().capacity())
         .sum();
-    System.out.printf("* DefaultVolume.cache: maxCacheSize=%d, curCacheSize=%d%n", maxCacheSize, curCacheSize);
     if(cache.values().stream()
         .map(Cached::content)
         .mapToLong(b->b.buffer().capacity())
@@ -78,7 +77,6 @@ public class DefaultVolume implements Volume {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
     Cached<OffsetBuffer> ob = cache.get(offset);
-    System.out.printf("DefaultVolume.getOffsetBuffer( %d ): %s%n", offset, ob);
     Objects.requireNonNull(ob);
     if(ob == null) {
       ByteBuffer bb = malloc.alloc();
@@ -188,9 +186,6 @@ public class DefaultVolume implements Volume {
     if(offset < 0 || offset >= woffset.get()) {
       throw new IllegalArgumentException("Bad offset: " + offset);
     }
-    System.out.printf("* Volume.cache: %d%n", cache.size());
-    cache.entrySet().stream()
-        .forEach(e->System.out.printf("  -> %d: %s%n", e.getKey(), e.getValue().content()));
     List<ByteBuffer> bufs = new LinkedList<>();
     OffsetBuffer buf = null;
     long nextOffset = offset;

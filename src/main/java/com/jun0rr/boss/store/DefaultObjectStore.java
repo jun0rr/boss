@@ -21,7 +21,6 @@ import com.jun0rr.boss.Volume;
 import com.jun0rr.boss.config.BossConfig;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
@@ -48,7 +47,6 @@ public class DefaultObjectStore implements ObjectStore {
   public DefaultObjectStore(BossConfig cfg) {
     this.config = Objects.requireNonNull(cfg);
     this.volume = config.volume().createVolume();
-    System.out.printf("* DefaultObjectStore.volumeConfig: %s%n", config.volume());
     this.context = config.mapping().context();
     this.index = new Index();
     load();
@@ -58,7 +56,6 @@ public class DefaultObjectStore implements ObjectStore {
     if(volume.isLoaded()) {
       Block b = volume.metadata();
       List<BinType> types = context.read(b.buffer());
-      //System.out.println("ObjectStore.load(): types=" + types);
       types.stream()
           .filter(t->!context.codecs().containsKey(t))
           .forEach(t->{
@@ -78,7 +75,6 @@ public class DefaultObjectStore implements ObjectStore {
       index.classIndex().putAll(i.classIndex());
       index.idIndex().putAll(i.idIndex());
       index.valueIndex().putAll(i.valueIndex());
-      //System.out.println(index);
       volume.release(b);
     }
   }
@@ -92,7 +88,6 @@ public class DefaultObjectStore implements ObjectStore {
   public <T> Stored<T> store(T o) {
     Block b = volume.allocate();
     ContextEvent evt = context.write(b.buffer().position(Long.BYTES), o);
-    //System.out.printf("* ObjectStore.store( %s ): evt=%s%n", o, evt);
     b.buffer().position(0).putLong(evt.checksum());
     b.commit();
     storeIndex(o, b, evt);
@@ -109,14 +104,12 @@ public class DefaultObjectStore implements ObjectStore {
   
   private void insertValueIndex(Object val, Block b, Entry<IndexType, List<IndexValue>> entry) {
     List<String> names = List.of(entry.getKey().name().split("\\."));
-    //System.out.printf("ObjectStore.updateValueIndex(%s): names=%s%n", entry.getKey().name(), names);
     for(String name : names) {
       final Class cls = val.getClass();
       val = context.mapper().extractStrategies().strategies().values().stream()
         .flatMap(s->s.invokers(cls).stream())
         .filter(f->f.name().equals(name))
         .findFirst().get().extract(val);
-      //System.out.println("ObjectStore.updateValueIndex(): val=" + val);
     }
     entry.getValue().add(new IndexValue(b.offset(), val));
   }
@@ -148,7 +141,6 @@ public class DefaultObjectStore implements ObjectStore {
   public <T> Stream<Stored<T>> find(Class<T> c, Predicate<T> p) {
     return index.findIndexByType(c).mapToObj(volume::get)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))
-        //.peek(System.out::println)
         .filter(s->p.test(s.object()));
   }
 
@@ -156,7 +148,6 @@ public class DefaultObjectStore implements ObjectStore {
   public <T, V> Stream<Stored<T>> find(Class<T> c, String name, V v) {
     return index.findIndexByValue(c, name, v)
         .mapToObj(volume::get)
-        //.peek(System.out::println)
         .map(b->Stored.<T>of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())));
   }
 
@@ -193,7 +184,6 @@ public class DefaultObjectStore implements ObjectStore {
     for(Entry<IndexType,List<IndexValue>> e : index.valueIndex().entrySet()) {
       if(e.getKey().type().isTypeOf(s.object().getClass())) {
         List<String> names = List.of(e.getKey().name().split("\\."));
-        //System.out.printf("ObjectStore.removeValueIndex(%s): names=%s%n", e.getKey().name(), names);
         Object val = s.object();
         for(String name : names) {
           final Object ob = val;
@@ -201,7 +191,6 @@ public class DefaultObjectStore implements ObjectStore {
             .flatMap(t->t.invokers(ob.getClass()).stream())
             .filter(f->f.name().equals(name))
             .findFirst().get().extract(val);
-          //System.out.println("ObjectStore.removeValueIndex(): val=" + val);
         }
         final Object vl = val;
         e.getValue().stream()
@@ -215,7 +204,6 @@ public class DefaultObjectStore implements ObjectStore {
   public <T, R> void createIndex(Class<T> c, String name, Function<T, R> fn) {
     IndexType t = new IndexType(context.getBinType(c), name);
     List<IndexValue> ls = new CopyOnWriteArrayList<>();
-    
     index.findIndexByType(c)
         .mapToObj(volume::get)
         .map(b->Stored.of(b.buffer().position(0).getLong(), b.offset(), context.read(b.buffer())))

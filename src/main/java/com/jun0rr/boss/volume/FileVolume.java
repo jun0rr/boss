@@ -97,11 +97,9 @@ public class FileVolume extends DefaultVolume {
 
   @Override
   public Volume commit(Block b) {
-    System.out.printf("-> FileVolume.commit: %s%n", b);
     long nextOffset = b.offset();
     do {
       OffsetBuffer buf = getOffsetBuffer(nextOffset);
-      System.out.printf("  - %s%n", buf);
       Uncheck.call(()->channel.write(buf.buffer().clear(), buf.offset()));
       nextOffset = getNextOffset(buf);
     }

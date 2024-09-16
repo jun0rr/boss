@@ -4,24 +4,19 @@
  */
 package com.jun0rr.boss.test;
 
-import com.jun0rr.binj.mapping.AnnotationConstructStrategy;
-import com.jun0rr.binj.mapping.AnnotationGetStrategy;
-import com.jun0rr.binj.mapping.AnnotationSetStrategy;
-import com.jun0rr.binj.mapping.DefaultConstructStrategy;
-import com.jun0rr.binj.mapping.FieldMethodGetStrategy;
-import com.jun0rr.binj.mapping.FieldSetStrategy;
-import com.jun0rr.binj.mapping.FieldsOrderConstructStrategy;
-import com.jun0rr.binj.mapping.GetterMethodStrategy;
-import com.jun0rr.binj.mapping.SetterMethodStrategy;
+import com.jun0rr.binj.BinContext;
 import com.jun0rr.boss.Boss;
 import com.jun0rr.boss.ObjectStore;
+import com.jun0rr.boss.Stored;
 import com.jun0rr.boss.config.BossConfig;
-import com.jun0rr.boss.config.BufferConfig;
 import com.jun0rr.boss.store.DefaultObjectStore;
 import com.jun0rr.uncheck.Uncheck;
+import com.jun0rr.timer.Timer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -39,8 +34,6 @@ public class TestObjectStore {
       Path path = Paths.get("./TestObjectStore.bin");
       Uncheck.call(()->Files.deleteIfExists(path));
       BossConfig config = BossConfig.from(TestObjectStore.class.getResourceAsStream("/boss.yml"));
-      config.mapping().context().mapper().constructStrategies().invokers(Person.class).stream()
-          .forEach(x->System.out.printf("* config.mapper.construct.invokers: %s%n", x));
       ObjectStore store = new DefaultObjectStore(config);
       System.out.println(store);
       for(int i = 0; i < 10; i++) {
@@ -69,40 +62,47 @@ public class TestObjectStore {
   public void testMemStore() {
     System.out.printf("---> testMemStore() <---%n");
     try {
-      BossConfig config = BossConfig.builder()
-          .addConstructStrategy(new FieldsOrderConstructStrategy())
-          .addConstructStrategy(new DefaultConstructStrategy())
-          .addConstructStrategy(new AnnotationConstructStrategy())
-          .addExtractStrategy(new FieldMethodGetStrategy())
-          .addExtractStrategy(new GetterMethodStrategy())
-          .addExtractStrategy(new AnnotationGetStrategy())
-          .addInjectStrategy(new SetterMethodStrategy())
-          .addInjectStrategy(new FieldSetStrategy())
-          .addInjectStrategy(new AnnotationSetStrategy())
-          .setBufferSize(1024)
-          .setBufferType(BufferConfig.Type.DIRECT)
-          .setMaxCacheSize(4*1024*1024*1024)
-          .setVolumeId("memVolume")
-          .build()
-          ;
-      System.out.println(config);
-      //ObjectStore store = new DefaultObjectStore(config);
-      ObjectStore store = Boss.objectStore(config);
+      Timer timer = new Timer();
+      ObjectStore store = Boss.memoryObjectStore();
       System.out.println(store);
-      for(int i = 0; i < 10; i++) {
+      BinContext ctx = BinContext.ofCombinedStrategyMapper();
+      timer.start();
+      for(int i = 0; i < 1000; i++) {
         Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
-        System.out.println(store.store(p));
+        Stored<Person> s = store.store(p);
+        //System.out.printf("-> %s, size=%d%n", s, ctx.calcSize(p));
       }
+      timer.lap();
       store.createIndex(Person.class, "name", Person::name);
       store.createIndex(Person.class, "address.number", p->p.address().number());
+      timer.lap();
       store.find(Person.class, p->p.name().equals("John-5")).forEach(System.out::println);
-      store.close();
+      //timer.lap();
+      //store.close();
+      timer.stop();
       
-      for(int i = 0; i < 10; i++) {
+      NumberFormat df = DecimalFormat.getInstance();
+      timer.duration().stream()
+          //.map(Timer::format)
+          .forEach(s->System.out.printf("* %s / %sms%n", Timer.format(s), df.format(s.toMillis())));
+      System.out.printf("* store total time: %s / %sms%n", Timer.format(timer.total()), df.format(timer.total().toMillis()));
+      
+      timer.start();
+      for(int i = 999; i >= 0; i--) {
         Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
         Assertions.assertEquals(p, store.find(Person.class, "name", p.name()).findFirst().get().object());
       }
-      store.close();
+      timer.stop();
+      System.out.printf("* find total time: %s / %sms%n", Timer.format(timer.total()), df.format(timer.total().toMillis()));
+      
+      timer.start();
+      for(int i = 999; i >= 0; i--) {
+        Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
+        Assertions.assertEquals(p, store.find(Person.class, q->q.name().equals(p.name())).findFirst().get().object());
+      }
+      timer.stop();
+      System.out.printf("* find2 total time: %s / %sms%n", Timer.format(timer.total()), df.format(timer.total().toMillis()));
+      //store.close();
     }
     catch(Exception e) {
       e.printStackTrace();

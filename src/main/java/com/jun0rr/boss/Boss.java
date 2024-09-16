@@ -27,46 +27,42 @@ import java.nio.file.Path;
 public class Boss {
   
   public static ObjectStore memoryObjectStore() {
-    return objectStore(BossConfig.builder()
+    return objectStore(
+        setDefaultStrategies(BossConfig.builder())
         .setBufferType(BufferConfig.Type.DIRECT)
         .setBufferSize(1024)
-        .setMaxCacheSize(2*1024*1024*1024)
+        .setMaxCacheSize(2L*1024*1024*1024)
         .setVolumeId("DefaultMemoryObjectStore")
-        .addConstructStrategy(new FieldsOrderConstructStrategy())
-        .addConstructStrategy(new AnnotationConstructStrategy())
-        .addConstructStrategy(new DefaultConstructStrategy())
-        .addExtractStrategy(new FieldMethodGetStrategy())
-        .addExtractStrategy(new AnnotationGetStrategy())
-        .addExtractStrategy(new GetterMethodStrategy())
-        .addExtractStrategy(new FieldGetStrategy())
-        .addInjectStrategy(new FieldMethodSetStrategy())
-        .addInjectStrategy(new SetterMethodStrategy())
-        .addInjectStrategy(new FieldSetStrategy())
         .build());
   }
   
   public static ObjectStore fileObjectStore(Path filepath) {
-    return objectStore(BossConfig.builder()
+    return objectStore(
+        setDefaultStrategies(BossConfig.builder())
         .setBufferType(BufferConfig.Type.DIRECT)
         .setBufferSize(1024)
-        .setMaxCacheSize(2*1024*1024*1024)
+        .setMaxCacheSize(2L*1024*1024*1024)
         .setVolumeId("DefaultFileObjectStore")
         .setVolumeStorePath(filepath)
-        .addConstructStrategy(new FieldsOrderConstructStrategy())
-        .addConstructStrategy(new AnnotationConstructStrategy())
-        .addConstructStrategy(new DefaultConstructStrategy())
-        .addExtractStrategy(new FieldMethodGetStrategy())
-        .addExtractStrategy(new AnnotationGetStrategy())
-        .addExtractStrategy(new GetterMethodStrategy())
-        .addExtractStrategy(new FieldGetStrategy())
-        .addInjectStrategy(new FieldMethodSetStrategy())
-        .addInjectStrategy(new SetterMethodStrategy())
-        .addInjectStrategy(new FieldSetStrategy())
         .build());
   }
   
   public static ObjectStore objectStore(BossConfig cfg) {
     return new DefaultObjectStore(cfg);
+  }
+  
+  private static BossConfig.Builder setDefaultStrategies(BossConfig.Builder builder) {
+    return builder.addConstructStrategy(new FieldsOrderConstructStrategy())
+        .addConstructStrategy(new AnnotationConstructStrategy())
+        .addConstructStrategy(new DefaultConstructStrategy())
+        .addExtractStrategy(new FieldMethodGetStrategy())
+        .addExtractStrategy(new AnnotationGetStrategy())
+        .addExtractStrategy(new GetterMethodStrategy())
+        .addExtractStrategy(new FieldGetStrategy())
+        .addInjectStrategy(new FieldMethodSetStrategy())
+        .addInjectStrategy(new AnnotationSetStrategy())
+        .addInjectStrategy(new SetterMethodStrategy())
+        .addInjectStrategy(new FieldSetStrategy());
   }
   
 }
