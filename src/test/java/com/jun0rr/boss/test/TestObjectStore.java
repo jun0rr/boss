@@ -31,25 +31,48 @@ public class TestObjectStore {
   public void testFileStore() {
     System.out.printf("---> testFileStore() <---%n");
     try {
+      Timer timer = new Timer();
       Path path = Paths.get("./TestObjectStore.bin");
       Uncheck.call(()->Files.deleteIfExists(path));
       BossConfig config = BossConfig.from(TestObjectStore.class.getResourceAsStream("/boss.yml"));
       ObjectStore store = new DefaultObjectStore(config);
       System.out.println(store);
-      for(int i = 0; i < 10; i++) {
+      timer.start();
+      for(int i = 0; i < 1000; i++) {
         Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
-        System.out.println(store.store(p));
+        Stored<Person> s = store.store(p);
+        //System.out.println(store.store(p));
       }
+      timer.lap();
       store.createIndex(Person.class, "name", Person::name);
-      store.createIndex(Person.class, "address.number", p->p.address().number());
-      store.find(Person.class, p->p.name().equals("John-5")).forEach(System.out::println);
+      //store.createIndex(Person.class, "address.number", p->p.address().number());
+      timer.lap();
+      store.find(Person.class, p->p.name().equals("John-505")).forEach(System.out::println);
+      timer.lap();
       store.close();
+      timer.stop();
+      
+      NumberFormat df = DecimalFormat.getInstance();
+      timer.duration().stream()
+          .forEach(s->System.out.printf("* %s / %sms%n", Timer.format(s), df.format(s.toMillis())));
+      System.out.printf("* store total time: %s / %sms%n", Timer.format(timer.total()), df.format(timer.total().toMillis()));
       
       store = new DefaultObjectStore(config);
-      for(int i = 0; i < 10; i++) {
+      timer.start();
+      for(int i = 999; i >= 0; i--) {
         Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
         Assertions.assertEquals(p, store.find(Person.class, "name", p.name()).findFirst().get().object());
       }
+      timer.stop();
+      System.out.printf("* find total time: %s / %sms%n", Timer.format(timer.total()), df.format(timer.total().toMillis()));
+      
+      timer.start();
+      for(int i = 999; i >= 0; i--) {
+        Person p = new Person("John-" + i, "Doe-" +i, LocalDate.now(), new Address("Street-" + (i + 1), "City-" + (i + 1), i + 100));
+        Assertions.assertEquals(p, store.find(Person.class, q->q.name().equals(p.name())).findFirst().get().object());
+      }
+      timer.stop();
+      System.out.printf("* find2 total time: %s / %sms%n", Timer.format(timer.total()), df.format(timer.total().toMillis()));
       store.close();
     }
     catch(Exception e) {
@@ -74,9 +97,9 @@ public class TestObjectStore {
       }
       timer.lap();
       store.createIndex(Person.class, "name", Person::name);
-      store.createIndex(Person.class, "address.number", p->p.address().number());
+      //store.createIndex(Person.class, "address.number", p->p.address().number());
       timer.lap();
-      store.find(Person.class, p->p.name().equals("John-5")).forEach(System.out::println);
+      store.find(Person.class, p->p.name().equals("John-505")).forEach(System.out::println);
       //timer.lap();
       //store.close();
       timer.stop();
